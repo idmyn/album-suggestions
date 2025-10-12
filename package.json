@@ -3,6 +3,9 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "prepare": "effect-language-service patch"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "prettier": "^3.6.2"
@@ -16,5 +19,5 @@
     "@effect/language-service": "^0.44.0",
     "@effect/platform": "^0.92.1",
     "effect": "^3.18.4"
-  }
+  },
 }
