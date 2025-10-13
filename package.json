@@ -1,23 +1,30 @@
 {
   "name": "david.place",
-  "module": "index.ts",
-  "type": "module",
   "private": true,
-  "scripts": {
-    "prepare": "effect-language-service patch"
-  },
-  "devDependencies": {
-    "@types/bun": "latest",
-    "prettier": "^3.6.2"
+  "workspaces": {
+    "packages": [
+      "website",
+      "worker",
+      "shared"
+    ],
+    "catalogs": {
+      "effect": {
+        "@effect/ai": "^0.31.0",
+        "@effect/ai-openrouter": "^0.5.0",
+        "@effect/platform": "^0.92.1",
+        "effect": "^3.18.4"
+      }
+    }
   },
   "peerDependencies": {
     "typescript": "^5"
   },
-  "dependencies": {
-    "@effect/ai": "^0.31.0",
-    "@effect/ai-openrouter": "^0.5.0",
+  "devDependencies": {
     "@effect/language-service": "^0.44.0",
-    "@effect/platform": "^0.92.1",
-    "effect": "^3.18.4"
+    "@types/bun": "latest",
+    "prettier": "^3.6.2"
   },
+  "scripts": {
+    "prepare": "effect-language-service patch"
+  }
 }
