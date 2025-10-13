@@ -1,0 +1,14 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "david-place-cron",
+  "main": "./index.ts",
+  "compatibility_date": "2025-10-11",
+  "observability": {
+    "enabled": true,
+  },
+  "triggers": {
+    "crons": [
+      "0 0 * * 5", // 00:00 on Friday
+    ],
+  },
+}

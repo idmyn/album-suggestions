@@ -4,10 +4,18 @@ import {
   OpenRouterLanguageModel,
 } from "@effect/ai-openrouter";
 import { FetchHttpClient } from "@effect/platform";
-import { Config, Console, Effect, Layer, Schema, Stream } from "effect";
-import { askForAlbums, MOCK_ALBUMS } from "./src/askForAlbums";
-import { fetchAccessToken, getSpotifyAlbum } from "./src/spotify";
-import { getSongLinks } from "./src/songLink";
+import {
+  Config,
+  ConfigProvider,
+  Console,
+  Effect,
+  Layer,
+  Schema,
+  Stream,
+} from "effect";
+import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
+import { fetchAccessToken, getSpotifyAlbum } from "./spotify";
+import { getSongLinks } from "./songLink";
 
 const program = Effect.gen(function* () {
   const albums = yield* askForAlbums();
@@ -43,4 +51,10 @@ const OpenRouter = OpenRouterClient.layerConfig({
 
 const MainLayer = Layer.mergeAll(OpenRouter, FetchHttpClient.layer);
 
-program.pipe(Effect.provide(MainLayer), Effect.runPromise);
+export const run = (env: Env): Promise<void> => {
+  return program.pipe(
+    Effect.provide(MainLayer),
+    Effect.withConfigProvider(ConfigProvider.fromJson(env)),
+    Effect.runPromise,
+  );
+};
