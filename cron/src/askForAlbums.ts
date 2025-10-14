@@ -2,14 +2,28 @@ import { LanguageModel } from "@effect/ai";
 import { OpenRouterLanguageModel } from "@effect/ai-openrouter";
 import { Effect, Schema } from "effect";
 
-const Sonar = OpenRouterLanguageModel.model("perplexity/sonar");
+//const Sonar = OpenRouterLanguageModel.model("perplexity/sonar");
+const SonarProOnline = OpenRouterLanguageModel.model(
+  "perplexity/sonar-pro:online",
+);
 
 const Album = Schema.Struct({
   title: Schema.String,
   artist: Schema.String,
-  releaseDate: Schema.String,
+  //releaseDate: Schema.String,
+  blurb: Schema.String,
+  genres: Schema.Array(Schema.String),
 });
 export type Album = Schema.Schema.Type<typeof Album>;
+
+const prompt = `
+Search the web for new albums released in the week. Return a list of these new albums with a blurb for each, mentioning what reviewers are saying. 
+I'm interested in both super popular music (in which case it doesn't need to be reviewed well) and very highly rated music from any genre
+
+In particular, I'm interested in new pop, hiphop, and electronic genres. But well reviewed albums in any genre are worth mentioning.
+
+Pay extra attention to reviews from theneedledrop on youtube, stereofox, and pitchfork
+`;
 
 export const askForAlbums = Effect.fn("askForAlbums")(function* () {
   const response = yield* LanguageModel.generateObject({
@@ -19,7 +33,7 @@ export const askForAlbums = Effect.fn("askForAlbums")(function* () {
         content: [
           {
             type: "text",
-            text: "Can you recommend three albums that were released in the past couple of weeks?",
+            text: prompt,
           },
         ],
       },
@@ -27,7 +41,7 @@ export const askForAlbums = Effect.fn("askForAlbums")(function* () {
     schema: Schema.Struct({
       albums: Schema.Array(Album),
     }),
-  }).pipe(Effect.provide(Sonar));
+  }).pipe(Effect.provide(SonarProOnline));
 
   return response.value.albums;
 });

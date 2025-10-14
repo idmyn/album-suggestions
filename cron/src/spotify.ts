@@ -1,4 +1,4 @@
-import { Config, Console, Effect, Redacted, Schema } from "effect";
+import { Config, Effect, Redacted, Schema, Option } from "effect";
 import type { Album } from "./askForAlbums";
 import { HttpClient, HttpClientRequest } from "@effect/platform";
 
@@ -113,13 +113,5 @@ export const getSpotifyAlbum = Effect.fn("getSpotifyAlbum")(function* (
 
   const firstResult = response[0];
 
-  if (!firstResult) {
-    return yield* Effect.fail(
-      new Error(
-        `No Spotify results found for ${album.title} by ${album.artist}`,
-      ),
-    );
-  }
-
-  return firstResult;
+  return Option.fromNullable(firstResult);
 });

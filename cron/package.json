@@ -15,5 +15,8 @@
     "@effect/platform": "catalog:effect",
     "effect": "catalog:effect",
     "shared": "workspace:*"
+  },
+  "scripts": {
+    "dev": "bun run dev.ts"
   }
 }
