@@ -1,15 +1,12 @@
-# david.place
+# WORK IN PROGRESS
 
-To install dependencies:
+purpose:
 
-```bash
-bun install
-```
+- get suggested albums to listen to
+- display them nicely, with a catalog of previous suggestions
+- maybe some kind of fancy vector similarity search
 
-To run:
+two components:
 
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.16. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+- website (sveltekit app)
+- cron (cloudflare worker running on a schedule)
