@@ -18,6 +18,7 @@ import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
 import { fetchAccessToken, getSpotifyAlbum } from "./spotify";
 import { getSongLinks } from "./songLink";
 import { DatabaseLive } from "shared";
+import { HoneycombLayer } from "./otel";
 
 const program = Effect.gen(function* () {
   const albums = yield* askForAlbums();
@@ -56,7 +57,7 @@ const program = Effect.gen(function* () {
   yield* Console.log(
     `\nProcessed ${albumsWithLinks.length} albums successfully (${albums.length - albumsWithLinks.length} albums skipped due to no Spotify results)`,
   );
-});
+}).pipe(Effect.withSpan("cron.run"));
 
 const OpenRouter = OpenRouterClient.layerConfig({
   apiKey: Config.redacted("OPENROUTER_API_KEY"),
@@ -66,6 +67,7 @@ const MainLayer = Layer.mergeAll(
   OpenRouter,
   FetchHttpClient.layer,
   DatabaseLive,
+  HoneycombLayer,
 );
 
 const programWithLayer = Effect.provide(program, MainLayer);
