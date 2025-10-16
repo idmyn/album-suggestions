@@ -17,10 +17,10 @@ import {
 import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
 import { fetchAccessToken, getSpotifyAlbum } from "./spotify";
 import { getSongLinks } from "./songLink";
+import { DatabaseLive } from "shared";
 
 const program = Effect.gen(function* () {
   const albums = yield* askForAlbums();
-  yield* Console.log(JSON.stringify(albums, null, 2));
 
   const accessToken = yield* fetchAccessToken();
 
@@ -62,7 +62,11 @@ const OpenRouter = OpenRouterClient.layerConfig({
   apiKey: Config.redacted("OPENROUTER_API_KEY"),
 }).pipe(Layer.provide(FetchHttpClient.layer));
 
-const MainLayer = Layer.mergeAll(OpenRouter, FetchHttpClient.layer);
+const MainLayer = Layer.mergeAll(
+  OpenRouter,
+  FetchHttpClient.layer,
+  DatabaseLive,
+);
 
 const programWithLayer = Effect.provide(program, MainLayer);
 

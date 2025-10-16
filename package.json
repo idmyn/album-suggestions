@@ -30,6 +30,7 @@
     "wrangler": "^4.42.2"
   },
   "scripts": {
-    "prepare": "effect-language-service patch"
+    "prepare": "effect-language-service patch",
+    "tsc": "bun --workspaces run tsc"
   }
 }

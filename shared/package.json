@@ -13,6 +13,10 @@
   "dependencies": {
     "@libsql/client": "catalog:drizzle",
     "drizzle-orm": "catalog:drizzle",
+    "effect": "catalog:effect",
     "nanoid": "^5.1.6"
+  },
+  "scripts": {
+    "tsc": "tsc --noEmit"
   }
 }
