@@ -17,6 +17,7 @@
     "shared": "workspace:*"
   },
   "scripts": {
-    "dev": "bun run dev.ts"
+    "dev": "bun run dev.ts",
+    "deploy": "wrangler deploy"
   }
 }

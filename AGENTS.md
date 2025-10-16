@@ -1,3 +1,7 @@
 Look in .context/effect for patterns on how to use Effect
 
-We track work in Beads instead of Markdown. Run \`bd quickstart\` to see how.
+When planning, sacrifice grammar for the sake of concision.
+
+Please ask me for confirmation on any generated plans before saving them as tasks.
+
+We track work in Beads instead of Markdown. You should use it via MCP.
