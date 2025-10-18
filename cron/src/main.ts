@@ -22,33 +22,37 @@ import { Database, DatabaseLive } from "shared";
 import { HoneycombLayer } from "./otel";
 
 const program = Effect.gen(function* () {
-  const albums = yield* askForAlbums();
+  const { aiResponseId, albums } = yield* askForAlbums();
 
   const accessToken = yield* fetchAccessToken();
 
   const albumsWithLinks = yield* Stream.fromIterable(albums).pipe(
-    Stream.mapEffect((album) =>
-      Effect.gen(function* () {
-        const spotifyAlbumOption = yield* getSpotifyAlbum(accessToken, album);
+    Stream.mapEffect(
+      (album) =>
+        Effect.gen(function* () {
+          const spotifyAlbumOption = yield* getSpotifyAlbum(accessToken, album);
 
-        if (Option.isNone(spotifyAlbumOption)) {
-          yield* Console.error(
-            `⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
-          );
-        }
+          if (Option.isNone(spotifyAlbumOption)) {
+            yield* Console.error(
+              `⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
+            );
+          }
 
-        return Option.map(spotifyAlbumOption, (spotifyAlbum) => ({
-          ...spotifyAlbum,
-          originalAlbum: album,
-        }));
-      }),
+          return Option.map(spotifyAlbumOption, (spotifyAlbum) => ({
+            ...spotifyAlbum,
+            blurb: album.blurb,
+          }));
+        }),
+      { concurrency: 10 },
     ),
     Stream.filterMap((option) => option),
-    Stream.mapEffect((albumWithOriginal) =>
-      Effect.gen(function* () {
-        const songLinks = yield* getSongLinks(albumWithOriginal.spotifyUrl);
-        return { ...albumWithOriginal, songLinks };
-      }),
+    Stream.mapEffect(
+      (albumWithBlurb) =>
+        Effect.gen(function* () {
+          const songLinks = yield* getSongLinks(albumWithBlurb.spotifyUrl);
+          return { ...albumWithBlurb, songLinks };
+        }),
+      { concurrency: 10 },
     ),
     Stream.runCollect,
   );
@@ -56,26 +60,21 @@ const program = Effect.gen(function* () {
   const db = yield* Database;
 
   const albumsArray = Array.fromIterable(albumsWithLinks);
-  const allArtists = albumsArray.flatMap((album) => album.artists);
-  const uniqueArtists = Array.dedupeWith(allArtists, (a, b) => a.id === b.id);
 
-  yield* db.insertArtists(uniqueArtists);
-  yield* db.insertAlbums(
-    albumsArray.map((album) => ({
+  yield* db.insertAlbumSuggestions({
+    aiResponseId,
+    albums: albumsArray.map((album) => ({
       id: album.id,
       name: album.name,
+      releaseDate: album.releaseDate,
+      releaseDatePrecision: album.releaseDatePrecision,
       appleMusicUrl: album.songLinks.linksByPlatform.appleMusic?.url,
       tidalUrl: album.songLinks.linksByPlatform.tidal?.url,
       spotifyUrl: album.spotifyUrl,
-      artistIds: album.artists.map((a) => a.id),
+      blurb: album.blurb,
+      artists: Array.fromIterable(album.artists),
     })),
-  );
-  yield* db.insertAlbumSuggestions(
-    albumsArray.map((album) => ({
-      albumId: album.id,
-      blurb: album.originalAlbum.blurb,
-    })),
-  );
+  });
 
   yield* Console.log(
     `\nProcessed ${albumsWithLinks.length} albums successfully (${albums.length - albumsWithLinks.length} albums skipped due to no Spotify results)`,

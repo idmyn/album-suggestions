@@ -17,26 +17,21 @@ export class Database extends Context.Tag("Database")<
       model: string;
       output: string;
     }) => Effect.Effect<string, DatabaseError>;
-    insertArtists: (
-      artists: Array<{ id: string; name: string }>,
-    ) => Effect.Effect<void, DatabaseError>;
-    insertAlbums: (
+
+    insertAlbumSuggestions: (data: {
+      aiResponseId: string;
       albums: Array<{
         id: string;
         name: string;
+        releaseDate: string;
+        releaseDatePrecision: "year" | "month" | "day";
         appleMusicUrl?: string;
         tidalUrl?: string;
         spotifyUrl: string;
-        artistIds: string[];
-      }>,
-    ) => Effect.Effect<void, DatabaseError>;
-    insertAlbumSuggestions: (
-      suggestions: Array<{
-        aiResponseId?: string;
-        albumId: string;
-        blurb?: string;
-      }>,
-    ) => Effect.Effect<void, DatabaseError>;
+        blurb: string;
+        artists: Array<{ id: string; name: string }>;
+      }>;
+    }) => Effect.Effect<void, DatabaseError>;
   }
 >() {}
 
@@ -67,75 +62,64 @@ export const DatabaseLive = Layer.effect(
         return id;
       }),
 
-      insertArtists: Effect.fn("db.insertArtists")(function* (artists) {
-        yield* Effect.tryPromise({
-          try: () =>
-            db
-              .insert(schema.artists)
-              .values(
-                artists.map((artist) => ({
-                  id: nanoid(),
-                  spotifyId: artist.id,
-                  name: artist.name,
-                })),
-              )
-              .onConflictDoNothing(),
-          catch: (cause) => new DatabaseError({ cause }),
-        });
-      }),
-
-      insertAlbums: Effect.fn("db.insertAlbums")(function* (albums) {
-        // TODO use transaction
-        yield* Effect.tryPromise({
-          try: () =>
-            db
-              .insert(schema.albums)
-              .values(
-                albums.map((album) => ({
-                  spotifyId: album.id,
-                  name: album.name,
-                  appleMusicUrl: album.appleMusicUrl ?? null,
-                  tidalUrl: album.tidalUrl ?? null,
-                  spotifyUrl: album.spotifyUrl,
-                })),
-              )
-              .onConflictDoNothing(),
-          catch: (cause) => new DatabaseError({ cause }),
-        });
-
-        const albumArtistPairs = albums.flatMap((album) =>
-          album.artistIds.map((artistId) => ({
-            albumId: album.id,
-            artistId,
-          })),
-        );
-
-        yield* Effect.tryPromise({
-          try: () =>
-            db
-              .insert(schema.albumArtists)
-              .values(albumArtistPairs)
-              .onConflictDoNothing(),
-          catch: (cause) => new DatabaseError({ cause }),
-        });
-      }),
-
       insertAlbumSuggestions: Effect.fn("db.insertAlbumSuggestions")(
-        function* (suggestions) {
+        function* (data) {
           yield* Effect.tryPromise({
             try: () =>
-              db
-                .insert(schema.albumSuggestions)
-                .values(
-                  suggestions.map((suggestion) => ({
+              db.transaction(async (tx) => {
+                const allArtists = data.albums.flatMap((album) =>
+                  album.artists.map((artist) => ({
+                    spotifyId: artist.id,
+                    name: artist.name,
+                  })),
+                );
+
+                if (allArtists.length > 0) {
+                  await tx
+                    .insert(schema.artists)
+                    .values(allArtists)
+                    .onConflictDoNothing();
+                }
+
+                await tx
+                  .insert(schema.albums)
+                  .values(
+                    data.albums.map((album) => ({
+                      spotifyId: album.id,
+                      name: album.name,
+                      releaseDate: album.releaseDate,
+                      releaseDatePrecision: album.releaseDatePrecision,
+                      appleMusicUrl: album.appleMusicUrl ?? null,
+                      tidalUrl: album.tidalUrl ?? null,
+                      spotifyUrl: album.spotifyUrl,
+                    })),
+                  )
+                  .onConflictDoNothing();
+
+                const albumArtistPairs = data.albums.flatMap((album) =>
+                  album.artists.map((artist) => ({
+                    albumId: album.id,
+                    artistId: artist.id,
+                  })),
+                );
+
+                if (albumArtistPairs.length > 0) {
+                  await tx
+                    .insert(schema.albumArtists)
+                    .values(albumArtistPairs)
+                    .onConflictDoNothing();
+                }
+
+                await tx.insert(schema.albumSuggestions).values(
+                  data.albums.map((album) => ({
                     id: nanoid(),
-                    aiResponseId: suggestion.aiResponseId ?? null,
-                    albumId: suggestion.albumId,
-                    blurb: suggestion.blurb ?? null,
+                    aiResponseId: data.aiResponseId,
+                    albumId: album.id,
+                    blurb: album.blurb,
                     createdAt: new Date(),
                   })),
-                )
-                .onConflictDoNothing(),
+                );
+              }),
             catch: (cause) => new DatabaseError({ cause }),
           });
         },

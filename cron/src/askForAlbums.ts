@@ -48,14 +48,17 @@ export const askForAlbums = Effect.fn("askForAlbums")(function* () {
     schema: responseSchema,
   }).pipe(Effect.provide(SonarProOnline));
 
-  yield* db.insertAiResponse({
+  const aiResponseId = yield* db.insertAiResponse({
     prompt,
     outputSchema: responseSchema.toString(),
     model: MODEL_ID,
     output: JSON.stringify(response.value),
   });
 
-  return response.value.albums;
+  return {
+    aiResponseId,
+    albums: response.value.albums,
+  };
 });
 
 export const MOCK_ALBUMS = [

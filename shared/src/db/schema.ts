@@ -8,7 +8,7 @@ import {
 export const aiResponses = sqliteTable("ai_responses", {
   id: text().primaryKey(),
   prompt: text().notNull(),
-  outputSchema: text(),
+  outputSchema: text().notNull(),
   model: text().notNull(),
   output: text().notNull(),
   createdAt: integer({ mode: "timestamp" }).$defaultFn(() => new Date()),
@@ -17,6 +17,8 @@ export const aiResponses = sqliteTable("ai_responses", {
 export const albums = sqliteTable("albums", {
   spotifyId: text().primaryKey(),
   name: text().notNull(),
+  releaseDate: text().notNull(),
+  releaseDatePrecision: text({ enum: ["year", "month", "day"] }).notNull(),
   appleMusicUrl: text(),
   tidalUrl: text(),
   spotifyUrl: text().notNull(),
@@ -48,6 +50,6 @@ export const albumSuggestions = sqliteTable("album_suggestions", {
   albumId: text()
     .notNull()
     .references(() => albums.spotifyId),
-  blurb: text(),
+  blurb: text().notNull(),
   createdAt: integer({ mode: "timestamp" }).$defaultFn(() => new Date()),
 });

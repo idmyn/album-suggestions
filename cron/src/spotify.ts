@@ -42,6 +42,8 @@ const SpotifySearchResponse = Schema.Struct({
         external_urls: Schema.Struct({
           spotify: Schema.String,
         }),
+        release_date: Schema.String,
+        release_date_precision: Schema.Literal("year", "month", "day"),
         images: Schema.Array(
           Schema.Struct({
             height: Schema.Number,
@@ -65,6 +67,8 @@ const SpotifySearchResponse = Schema.Struct({
         name: Schema.String,
         id: Schema.String,
         spotifyUrl: Schema.String,
+        releaseDate: Schema.String,
+        releaseDatePrecision: Schema.Literal("year", "month", "day"),
         images: Schema.Array(
           Schema.Struct({
             height: Schema.Number,
@@ -85,6 +89,8 @@ const SpotifySearchResponse = Schema.Struct({
           spotifyUrl: item.external_urls.spotify,
           artists: item.artists,
           images: item.images,
+          releaseDate: item.release_date,
+          releaseDatePrecision: item.release_date_precision,
         })),
       encode: () => {
         throw new Error("Encoding not supported");
