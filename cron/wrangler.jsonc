@@ -8,13 +8,11 @@
   },
   "triggers": {
     "crons": [
-      //"0 0 * * 5", // 00:00 on Friday
-      "*/5 * * * *",
+      "0 0 * * FRI", // 00:00 on Friday
+      //"*/2 * * * *",
     ],
   },
   "vars": {
-    "HONEYCOMB_DATASET": "david.place",
-    "SERVICE_NAME": "cloudflare-cron-worker",
     "OTEL_ENABLED": "true",
   },
 }

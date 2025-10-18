@@ -18,7 +18,7 @@ import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
 import { fetchAccessToken, getSpotifyAlbum } from "./spotify";
 import { getSongLinks } from "./songLink";
 import { DatabaseLive } from "shared";
-import { HoneycombLayer } from "./otel";
+import { HoneycombLayer } from "./effect-otel";
 
 const program = Effect.gen(function* () {
   const albums = yield* askForAlbums();

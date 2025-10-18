@@ -30,23 +30,22 @@ export const DatabaseLive = Layer.effect(
     const db = drizzle(client, { schema });
 
     return {
-      insertAiResponse: (data) =>
-        Effect.gen(function* () {
-          const id = nanoid();
-          yield* Effect.tryPromise({
-            try: () =>
-              db.insert(schema.aiResponses).values({
-                id,
-                prompt: data.prompt,
-                outputSchema: data.outputSchema,
-                model: data.model,
-                output: data.output,
-                createdAt: new Date(),
-              }),
-            catch: (cause) => new DatabaseError({ cause }),
-          });
-          return id;
-        }),
+      insertAiResponse: Effect.fn("insertAiResponse")(function* (data) {
+        const id = nanoid();
+        yield* Effect.tryPromise({
+          try: () =>
+            db.insert(schema.aiResponses).values({
+              id,
+              prompt: data.prompt,
+              outputSchema: data.outputSchema,
+              model: data.model,
+              output: data.output,
+              createdAt: new Date(),
+            }),
+          catch: (cause) => new DatabaseError({ cause }),
+        });
+        return id;
+      }),
     };
   }),
 );
