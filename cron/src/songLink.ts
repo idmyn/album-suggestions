@@ -20,7 +20,9 @@ const SongLinkResponse = Schema.Struct({
   }),
 });
 
-export const getSongLinks = Effect.fn("getSongLinks")(function* (url: string) {
+export const getSongLinks = Effect.fn("songLink.getLinks")(function* (
+  url: string,
+) {
   const client = yield* HttpClient.HttpClient;
 
   const json = yield* HttpClientRequest.get(

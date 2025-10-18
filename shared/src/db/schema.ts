@@ -3,7 +3,6 @@ import {
   text,
   integer,
   primaryKey,
-  unique,
 } from "drizzle-orm/sqlite-core";
 
 export const aiResponses = sqliteTable("ai_responses", {
@@ -15,37 +14,28 @@ export const aiResponses = sqliteTable("ai_responses", {
   createdAt: integer({ mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
-export const albums = sqliteTable(
-  "albums",
-  {
-    id: text().primaryKey(),
-    platform: text().notNull().default("spotify"),
-    externalId: text().notNull(),
-    name: text().notNull(),
-  },
-  (table) => [unique().on(table.platform, table.externalId)],
-);
+export const albums = sqliteTable("albums", {
+  spotifyId: text().primaryKey(),
+  name: text().notNull(),
+  appleMusicUrl: text(),
+  tidalUrl: text(),
+  spotifyUrl: text().notNull(),
+});
 
-export const artists = sqliteTable(
-  "artists",
-  {
-    id: text().primaryKey(),
-    platform: text().notNull().default("spotify"),
-    externalId: text().notNull(),
-    name: text().notNull(),
-  },
-  (table) => [unique().on(table.platform, table.externalId)],
-);
+export const artists = sqliteTable("artists", {
+  spotifyId: text().primaryKey(),
+  name: text().notNull(),
+});
 
 export const albumArtists = sqliteTable(
   "album_artists",
   {
     albumId: text()
       .notNull()
-      .references(() => albums.id, { onDelete: "cascade" }),
+      .references(() => albums.spotifyId, { onDelete: "cascade" }),
     artistId: text()
       .notNull()
-      .references(() => artists.id, { onDelete: "cascade" }),
+      .references(() => artists.spotifyId, { onDelete: "cascade" }),
   },
   (table) => [primaryKey({ columns: [table.albumId, table.artistId] })],
 );
@@ -57,7 +47,7 @@ export const albumSuggestions = sqliteTable("album_suggestions", {
   }),
   albumId: text()
     .notNull()
-    .references(() => albums.id),
+    .references(() => albums.spotifyId),
   blurb: text(),
   createdAt: integer({ mode: "timestamp" }).$defaultFn(() => new Date()),
 });

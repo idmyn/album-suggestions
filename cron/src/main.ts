@@ -5,6 +5,7 @@ import {
 } from "@effect/ai-openrouter";
 import { FetchHttpClient } from "@effect/platform";
 import {
+  Array,
   Config,
   ConfigProvider,
   Console,
@@ -17,8 +18,8 @@ import {
 import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
 import { fetchAccessToken, getSpotifyAlbum } from "./spotify";
 import { getSongLinks } from "./songLink";
-import { DatabaseLive } from "shared";
-import { HoneycombLayer } from "./effect-otel";
+import { Database, DatabaseLive } from "shared";
+import { HoneycombLayer } from "./otel";
 
 const program = Effect.gen(function* () {
   const albums = yield* askForAlbums();
@@ -52,7 +53,29 @@ const program = Effect.gen(function* () {
     Stream.runCollect,
   );
 
-  yield* Console.log(JSON.stringify(albumsWithLinks, null, 2));
+  const db = yield* Database;
+
+  const albumsArray = Array.fromIterable(albumsWithLinks);
+  const allArtists = albumsArray.flatMap((album) => album.artists);
+  const uniqueArtists = Array.dedupeWith(allArtists, (a, b) => a.id === b.id);
+
+  yield* db.insertArtists(uniqueArtists);
+  yield* db.insertAlbums(
+    albumsArray.map((album) => ({
+      id: album.id,
+      name: album.name,
+      appleMusicUrl: album.songLinks.linksByPlatform.appleMusic?.url,
+      tidalUrl: album.songLinks.linksByPlatform.tidal?.url,
+      spotifyUrl: album.spotifyUrl,
+      artistIds: album.artists.map((a) => a.id),
+    })),
+  );
+  yield* db.insertAlbumSuggestions(
+    albumsArray.map((album) => ({
+      albumId: album.id,
+      blurb: album.originalAlbum.blurb,
+    })),
+  );
 
   yield* Console.log(
     `\nProcessed ${albumsWithLinks.length} albums successfully (${albums.length - albumsWithLinks.length} albums skipped due to no Spotify results)`,

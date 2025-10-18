@@ -8,28 +8,30 @@ const TokenResponse = Schema.Struct({
   expires_in: Schema.Number,
 });
 
-export const fetchAccessToken = Effect.fn("fetchAccessToken")(function* () {
-  const client = yield* HttpClient.HttpClient;
+export const fetchAccessToken = Effect.fn("spotify.fetchAccessToken")(
+  function* () {
+    const client = yield* HttpClient.HttpClient;
 
-  const clientId = yield* Config.redacted("SPOTIFY_CLIENT_ID");
-  const clientSecret = yield* Config.redacted("SPOTIFY_CLIENT_SECRET");
+    const clientId = yield* Config.redacted("SPOTIFY_CLIENT_ID");
+    const clientSecret = yield* Config.redacted("SPOTIFY_CLIENT_SECRET");
 
-  const json = yield* HttpClientRequest.post(
-    "https://accounts.spotify.com/api/token",
-  ).pipe(
-    HttpClientRequest.bodyUrlParams({
-      grant_type: "client_credentials",
-      client_id: Redacted.value(clientId),
-      client_secret: Redacted.value(clientSecret),
-    }),
-    client.execute,
-    Effect.flatMap((res) => res.json),
-  );
+    const json = yield* HttpClientRequest.post(
+      "https://accounts.spotify.com/api/token",
+    ).pipe(
+      HttpClientRequest.bodyUrlParams({
+        grant_type: "client_credentials",
+        client_id: Redacted.value(clientId),
+        client_secret: Redacted.value(clientSecret),
+      }),
+      client.execute,
+      Effect.flatMap((res) => res.json),
+    );
 
-  const response = yield* Schema.decodeUnknown(TokenResponse)(json);
+    const response = yield* Schema.decodeUnknown(TokenResponse)(json);
 
-  return response.access_token;
-});
+    return response.access_token;
+  },
+);
 
 const SpotifySearchResponse = Schema.Struct({
   albums: Schema.Struct({
@@ -91,7 +93,7 @@ const SpotifySearchResponse = Schema.Struct({
   ),
 );
 
-export const getSpotifyAlbum = Effect.fn("getSpotifyAlbum")(function* (
+export const getSpotifyAlbum = Effect.fn("spotify.searchForAlbum")(function* (
   accessToken: string,
   album: Album,
 ) {
