@@ -11,7 +11,6 @@ const SonarProOnline = OpenRouterLanguageModel.model(MODEL_ID);
 const Album = Schema.Struct({
   title: Schema.String,
   artist: Schema.String,
-  //releaseDate: Schema.String,
   blurb: Schema.String,
   genres: Schema.Array(Schema.String),
 });
@@ -54,6 +53,8 @@ export const askForAlbums = Effect.fn("askForAlbums")(function* () {
     model: MODEL_ID,
     output: JSON.stringify(response.value),
   });
+
+  yield* Effect.annotateCurrentSpan({ aiResponseId });
 
   return {
     aiResponseId,

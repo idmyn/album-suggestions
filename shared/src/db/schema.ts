@@ -4,6 +4,7 @@ import {
   integer,
   primaryKey,
 } from "drizzle-orm/sqlite-core";
+import { relations } from "drizzle-orm";
 
 export const aiResponses = sqliteTable("ai_responses", {
   id: text().primaryKey(),
@@ -11,7 +12,9 @@ export const aiResponses = sqliteTable("ai_responses", {
   outputSchema: text().notNull(),
   model: text().notNull(),
   output: text().notNull(),
-  createdAt: integer({ mode: "timestamp" }).$defaultFn(() => new Date()),
+  createdAt: integer({ mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export const albums = sqliteTable("albums", {
@@ -51,5 +54,44 @@ export const albumSuggestions = sqliteTable("album_suggestions", {
     .notNull()
     .references(() => albums.spotifyId),
   blurb: text().notNull(),
-  createdAt: integer({ mode: "timestamp" }).$defaultFn(() => new Date()),
+  createdAt: integer({ mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
+
+export const aiResponsesRelations = relations(aiResponses, ({ many }) => ({
+  albumSuggestions: many(albumSuggestions),
+}));
+
+export const albumSuggestionsRelations = relations(
+  albumSuggestions,
+  ({ one }) => ({
+    aiResponse: one(aiResponses, {
+      fields: [albumSuggestions.aiResponseId],
+      references: [aiResponses.id],
+    }),
+    albums: one(albums, {
+      fields: [albumSuggestions.albumId],
+      references: [albums.spotifyId],
+    }),
+  }),
+);
+
+export const albumsRelations = relations(albums, ({ many }) => ({
+  albumArtists: many(albumArtists),
+}));
+
+export const albumArtistsRelations = relations(albumArtists, ({ one }) => ({
+  album: one(albums, {
+    fields: [albumArtists.albumId],
+    references: [albums.spotifyId],
+  }),
+  artist: one(artists, {
+    fields: [albumArtists.artistId],
+    references: [artists.spotifyId],
+  }),
+}));
+
+export const artistsRelations = relations(artists, ({ many }) => ({
+  albumArtists: many(albumArtists),
+}));

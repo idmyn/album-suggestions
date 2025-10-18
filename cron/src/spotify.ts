@@ -1,4 +1,12 @@
-import { Config, Effect, Redacted, Schema, Option } from "effect";
+import {
+  Config,
+  Console,
+  Effect,
+  Redacted,
+  Schema,
+  Option,
+  Stream,
+} from "effect";
 import type { Album } from "./askForAlbums";
 import { HttpClient, HttpClientRequest } from "@effect/platform";
 
@@ -99,7 +107,34 @@ const SpotifySearchResponse = Schema.Struct({
   ),
 );
 
-export const getSpotifyAlbum = Effect.fn("spotify.searchForAlbum")(function* (
+export const searchForAlbums = Effect.fn("spotify.searchForAlbums")(function* (
+  albums: readonly Album[],
+) {
+  const accessToken = yield* fetchAccessToken();
+
+  return Stream.fromIterable(albums).pipe(
+    Stream.mapEffect(
+      (album) =>
+        Effect.gen(function* () {
+          const spotifyAlbumOption = yield* getSpotifyAlbum(accessToken, album);
+
+          if (Option.isNone(spotifyAlbumOption)) {
+            yield* Console.error(
+              `⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
+            );
+          }
+
+          return Option.map(spotifyAlbumOption, (spotifyAlbum) => ({
+            ...spotifyAlbum,
+            blurb: album.blurb,
+          }));
+        }),
+      { concurrency: 10 },
+    ),
+  );
+});
+
+const getSpotifyAlbum = Effect.fn(function* (
   accessToken: string,
   album: Album,
 ) {

@@ -16,7 +16,7 @@ import {
   Option,
 } from "effect";
 import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
-import { fetchAccessToken, getSpotifyAlbum } from "./spotify";
+import { searchForAlbums } from "./spotify";
 import { getSongLinks } from "./songLink";
 import { Database, DatabaseLive } from "shared";
 import { HoneycombLayer } from "./otel";
@@ -24,28 +24,12 @@ import { HoneycombLayer } from "./otel";
 const program = Effect.gen(function* () {
   const { aiResponseId, albums } = yield* askForAlbums();
 
-  const accessToken = yield* fetchAccessToken();
+  const foundAlbums = yield* searchForAlbums(albums);
 
-  const albumsWithLinks = yield* Stream.fromIterable(albums).pipe(
-    Stream.mapEffect(
-      (album) =>
-        Effect.gen(function* () {
-          const spotifyAlbumOption = yield* getSpotifyAlbum(accessToken, album);
-
-          if (Option.isNone(spotifyAlbumOption)) {
-            yield* Console.error(
-              `⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
-            );
-          }
-
-          return Option.map(spotifyAlbumOption, (spotifyAlbum) => ({
-            ...spotifyAlbum,
-            blurb: album.blurb,
-          }));
-        }),
-      { concurrency: 10 },
-    ),
-    Stream.filterMap((option) => option),
+  const albumsWithLinks = yield* Stream.filterMap(
+    foundAlbums,
+    (option) => option,
+  ).pipe(
     Stream.mapEffect(
       (albumWithBlurb) =>
         Effect.gen(function* () {

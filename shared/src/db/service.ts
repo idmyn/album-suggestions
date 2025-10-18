@@ -1,5 +1,5 @@
 import { createClient } from "@libsql/client";
-import { Config, Context, Data, Effect, Layer } from "effect";
+import { Config, Context, Data, Effect, Layer, Option } from "effect";
 import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema";
 import { nanoid } from "./utils";
@@ -7,6 +7,21 @@ import { nanoid } from "./utils";
 export class DatabaseError extends Data.TaggedError("DatabaseError")<{
   cause: unknown;
 }> {}
+
+type AlbumSuggestions = {
+  createdAt: Date;
+  albums: Array<{
+    id: string;
+    name: string;
+    releaseDate: string;
+    releaseDatePrecision: "year" | "month" | "day";
+    appleMusicUrl: string | null;
+    tidalUrl: string | null;
+    spotifyUrl: string;
+    blurb: string;
+    artists: Array<{ id: string; name: string }>;
+  }>;
+};
 
 export class Database extends Context.Tag("Database")<
   Database,
@@ -32,6 +47,11 @@ export class Database extends Context.Tag("Database")<
         artists: Array<{ id: string; name: string }>;
       }>;
     }) => Effect.Effect<void, DatabaseError>;
+
+    getLatestAlbumSuggestions: () => Effect.Effect<
+      Option.Option<AlbumSuggestions>,
+      DatabaseError
+    >;
   }
 >() {}
 
@@ -120,6 +140,62 @@ export const DatabaseLive = Layer.effect(
                   })),
                 );
               }),
+            catch: (cause) => new DatabaseError({ cause }),
+          });
+        },
+      ),
+
+      getLatestAlbumSuggestions: Effect.fn("db.getLatestAlbumSuggestions")(
+        function* () {
+          return yield* Effect.tryPromise({
+            try: async () => {
+              const data = await db.query.aiResponses.findFirst({
+                orderBy: (aiResponses, { desc }) => [
+                  desc(aiResponses.createdAt),
+                ],
+                with: {
+                  albumSuggestions: {
+                    with: {
+                      albums: {
+                        with: {
+                          albumArtists: {
+                            with: {
+                              artist: true,
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+
+              if (!data) return Option.none();
+
+              const albums: AlbumSuggestions["albums"] =
+                data.albumSuggestions.map((albumSuggestion) => ({
+                  id: albumSuggestion.albums.spotifyId,
+                  name: albumSuggestion.albums.name,
+                  releaseDate: albumSuggestion.albums.releaseDate,
+                  releaseDatePrecision:
+                    albumSuggestion.albums.releaseDatePrecision,
+                  appleMusicUrl: albumSuggestion.albums.appleMusicUrl,
+                  tidalUrl: albumSuggestion.albums.tidalUrl,
+                  spotifyUrl: albumSuggestion.albums.spotifyUrl,
+                  blurb: albumSuggestion.blurb,
+                  artists: albumSuggestion.albums.albumArtists.map(
+                    (albumArtist) => ({
+                      id: albumArtist.artist.spotifyId,
+                      name: albumArtist.artist.name,
+                    }),
+                  ),
+                }));
+
+              return Option.some({
+                createdAt: data.createdAt,
+                albums,
+              });
+            },
             catch: (cause) => new DatabaseError({ cause }),
           });
         },
