@@ -12,6 +12,10 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
   },
+  "dependencies": {
+    "effect": "catalog:effect",
+    "shared": "workspace:*"
+  },
   "devDependencies": {
     "@sveltejs/adapter-auto": "^6.1.0",
     "@sveltejs/kit": "^2.43.2",

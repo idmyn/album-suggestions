@@ -52,6 +52,10 @@
     "website": {
       "name": "website",
       "version": "0.0.1",
+      "dependencies": {
+        "effect": "catalog:effect",
+        "shared": "workspace:*",
+      },
       "devDependencies": {
         "@sveltejs/adapter-auto": "^6.1.0",
         "@sveltejs/kit": "^2.43.2",

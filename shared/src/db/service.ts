@@ -8,7 +8,7 @@ export class DatabaseError extends Data.TaggedError("DatabaseError")<{
   cause: unknown;
 }> {}
 
-type AlbumSuggestions = {
+export type AlbumSuggestions = {
   createdAt: Date;
   albums: Array<{
     id: string;
