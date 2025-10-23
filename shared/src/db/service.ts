@@ -20,6 +20,11 @@ export type AlbumSuggestions = {
     spotifyUrl: string;
     blurb: string;
     artists: Array<{ id: string; name: string }>;
+    images: {
+      small: string;
+      medium: string;
+      large: string;
+    };
   }>;
 };
 
@@ -45,6 +50,9 @@ export class Database extends Context.Tag("Database")<
         spotifyUrl: string;
         blurb: string;
         artists: Array<{ id: string; name: string }>;
+        smallImageUrl: string;
+        mediumImageUrl: string;
+        largeImageUrl: string;
       }>;
     }) => Effect.Effect<void, DatabaseError>;
 
@@ -112,6 +120,9 @@ export const DatabaseLive = Layer.effect(
                       appleMusicUrl: album.appleMusicUrl ?? null,
                       tidalUrl: album.tidalUrl ?? null,
                       spotifyUrl: album.spotifyUrl,
+                      smallImageUrl: album.smallImageUrl,
+                      mediumImageUrl: album.mediumImageUrl,
+                      largeImageUrl: album.largeImageUrl,
                     })),
                   )
                   .onConflictDoNothing();
@@ -189,6 +200,11 @@ export const DatabaseLive = Layer.effect(
                       name: albumArtist.artist.name,
                     }),
                   ),
+                  images: {
+                    small: albumSuggestion.albums.smallImageUrl,
+                    medium: albumSuggestion.albums.mediumImageUrl,
+                    large: albumSuggestion.albums.largeImageUrl,
+                  },
                 }));
 
               return Option.some({

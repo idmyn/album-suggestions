@@ -25,6 +25,9 @@ export const albums = sqliteTable("albums", {
   appleMusicUrl: text(),
   tidalUrl: text(),
   spotifyUrl: text().notNull(),
+  smallImageUrl: text().notNull(),
+  mediumImageUrl: text().notNull(),
+  largeImageUrl: text().notNull(),
 });
 
 export const artists = sqliteTable("artists", {

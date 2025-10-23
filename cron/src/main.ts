@@ -57,6 +57,9 @@ const program = Effect.gen(function* () {
       spotifyUrl: album.spotifyUrl,
       blurb: album.blurb,
       artists: Array.fromIterable(album.artists),
+      smallImageUrl: album.images.smallImageUrl,
+      mediumImageUrl: album.images.mediumImageUrl,
+      largeImageUrl: album.images.largeImageUrl,
     })),
   });
 

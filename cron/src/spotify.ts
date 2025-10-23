@@ -58,6 +58,28 @@ const SpotifySearchResponse = Schema.Struct({
             url: Schema.String,
             width: Schema.Number,
           }),
+        ).pipe(
+          Schema.itemsCount(3),
+          Schema.transform(
+            Schema.Struct({
+              smallImageUrl: Schema.String,
+              mediumImageUrl: Schema.String,
+              largeImageUrl: Schema.String,
+            }),
+            {
+              decode: (images) => {
+                const sorted = images.toSorted((a, b) => a.width - b.width);
+                return {
+                  smallImageUrl: sorted[0]!.url,
+                  mediumImageUrl: sorted[1]!.url,
+                  largeImageUrl: sorted[2]!.url,
+                };
+              },
+              encode: () => {
+                throw new Error("Encoding not supported");
+              },
+            },
+          ),
         ),
         artists: Schema.Array(
           Schema.Struct({
@@ -77,13 +99,11 @@ const SpotifySearchResponse = Schema.Struct({
         spotifyUrl: Schema.String,
         releaseDate: Schema.String,
         releaseDatePrecision: Schema.Literal("year", "month", "day"),
-        images: Schema.Array(
-          Schema.Struct({
-            height: Schema.Number,
-            url: Schema.String,
-            width: Schema.Number,
-          }),
-        ),
+        images: Schema.Struct({
+          smallImageUrl: Schema.String,
+          mediumImageUrl: Schema.String,
+          largeImageUrl: Schema.String,
+        }),
         artists: Schema.Array(
           Schema.Struct({ id: Schema.String, name: Schema.String }),
         ),
