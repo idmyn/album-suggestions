@@ -8,21 +8,23 @@
 	export let tidalUrl: string | null;
 </script>
 
-<div class="card card-m shadow-sm">
+<div class="card card-m shadow-sm border-black border-1 w-2xl">
 	<div class="card-body flex-row gap-4">
 		<img
 			src={imageUrl}
 			alt="{name} album art"
-			class="w-32 h-32 rounded object-cover flex-shrink-0"
+			class="w-44 h-44 rounded-lg object-cover flex-shrink-0"
 		/>
-		<div class="flex flex-col justify-center flex-1">
-			<h2 class="text-xl font-bold mb-1">
-				{name}
-			</h2>
-			<p class="text-gray-600 text-sm mb-2">
-				{artists.map((a) => a.name).join(", ")}
-			</p>
-			<p class="text-gray-800 mb-3">
+		<div class="flex flex-col gap-2">
+			<div>
+				<h2 class="text-xl font-bold">
+					{name}
+				</h2>
+				<p class="text-sm">
+					{artists.map((a) => a.name).join(", ")}
+				</p>
+			</div>
+			<p class="text-gray-800 h-fit grow-0">
 				{blurb}
 			</p>
 			<div class="flex gap-3">
