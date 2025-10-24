@@ -12,12 +12,15 @@
   	<p>no suggestions yet...</p>
   {:else}
   	<div class="max-w-3xl">
-  		{#each suggestions.albums as { name, artists, blurb, images }}
+  		{#each suggestions.albums as album}
   			<AlbumSummaryCard
-  				name={name}
-  				artists={artists}
-  				blurb={blurb}
-  				imageUrl={images.medium}
+  				name={album.name}
+  				artists={album.artists}
+  				blurb={album.blurb}
+  				imageUrl={album.images.medium}
+                spotifyUrl={album.spotifyUrl}
+                tidalUrl={album.tidalUrl}
+                appleMusicUrl={album.appleMusicUrl}
   			/>
   		{/each}
   	</div>
