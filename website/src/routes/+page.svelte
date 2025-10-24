@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getLatestAlbumSuggestions } from './albumSuggestions.remote';
+  import { getLatestAlbumSuggestions } from './data.remote';
   import AlbumSummaryCard from './AlbumSummaryCard.svelte';
 
   const suggestions = await getLatestAlbumSuggestions();
