@@ -5,17 +5,15 @@
 	const suggestions = await getLatestAlbumSuggestions();
 </script>
 
-<main class="page-container">
-	<div class="left-column">
+<div class="flex">
+	<nav>
 		<div class="text-xl font-medium">2025W43</div>
 		<div class="about-link">
 			<a href="/about">about</a>
 		</div>
-	</div>
+	</nav>
 
-	<div class="divider h-full"></div>
-
-	<div class="content-column overflow-y-auto">
+	<main>
 		{#if !suggestions}
 			<p>no suggestions yet...</p>
 		{:else}
@@ -28,21 +26,19 @@
 				/>
 			{/each}
 		{/if}
-	</div>
-</main>
+	</main>
+</div>
 
 <style>
-	.page-container {
-		display: grid;
-		grid-template-columns: 10vw 1px 2fr;
-		gap: 3rem;
-		max-width: 85rem;
-		margin: 0 auto;
-		padding: 3rem 2rem;
-		height: 100vh;
-	}
+	nav {
+		margin-left: 20vw;
+		position: sticky;
+		top: 10vh;
+		height: 80vh;
+		padding-right: theme(spacing.9);
+		margin-right: theme(spacing.9);
+		border-right: 1px solid black;
 
-	.left-column {
 		display: flex;
 		flex-direction: column;
 		justify-content: space-between;
@@ -53,13 +49,8 @@
 		text-decoration: underline;
 	}
 
-	.divider {
-		background-color: #000;
-		width: 1px;
-		margin: 0;
-	}
-
-	.content-column {
-		padding-top: 0.5rem;
+	main {
+		padding: theme(spacing.14) 0;
+		max-width: 40rem;
 	}
 </style>

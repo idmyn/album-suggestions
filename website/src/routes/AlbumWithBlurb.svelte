@@ -29,15 +29,14 @@
 	}
 
 	.album-image {
-		width: 200px;
-		height: 200px;
+		width: 180px;
+		height: 180px;
 		object-fit: cover;
 	}
 
 	.album-info {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.album-title {
@@ -54,7 +53,7 @@
 	.album-blurb {
 		font-size: 0.95rem;
 		line-height: 1.5;
-		margin: 0;
+		margin-top: theme(spacing.2);
 		max-width: 40rem;
 	}
 </style>
