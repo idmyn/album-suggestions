@@ -11,6 +11,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "@libsql/client": "catalog:drizzle",
     "drizzle-orm": "catalog:drizzle",
     "effect": "catalog:effect",
