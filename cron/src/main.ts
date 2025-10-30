@@ -18,7 +18,7 @@ import {
 import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
 import { searchForAlbums } from "./spotify";
 import { getSongLinks } from "./songLink";
-import { Database, DatabaseLive } from "shared";
+import { Database, DatabaseLive, currentWeekId } from "shared";
 import { HoneycombLayer } from "./otel";
 
 const program = Effect.gen(function* () {
@@ -45,7 +45,8 @@ const program = Effect.gen(function* () {
 
   const albumsArray = Array.fromIterable(albumsWithLinks);
 
-  yield* db.insertAlbumSuggestions({
+  yield* db.insertWeeklyBatch({
+    weekId: currentWeekId(),
     aiResponseId,
     albums: albumsArray.map((album) => ({
       id: album.id,
