@@ -62,8 +62,23 @@ export const albumSuggestions = sqliteTable("album_suggestions", {
     .$defaultFn(() => new Date()),
 });
 
-export const aiResponsesRelations = relations(aiResponses, ({ many }) => ({
+export const weeklyBatches = sqliteTable("weekly_batches", {
+  weekId: text().primaryKey(),
+  aiResponseId: text()
+    .notNull()
+    .unique()
+    .references(() => aiResponses.id, { onDelete: "cascade" }),
+  createdAt: integer({ mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export const aiResponsesRelations = relations(aiResponses, ({ many, one }) => ({
   albumSuggestions: many(albumSuggestions),
+  weeklyBatch: one(weeklyBatches, {
+    fields: [aiResponses.id],
+    references: [weeklyBatches.aiResponseId],
+  }),
 }));
 
 export const albumSuggestionsRelations = relations(
@@ -97,4 +112,11 @@ export const albumArtistsRelations = relations(albumArtists, ({ one }) => ({
 
 export const artistsRelations = relations(artists, ({ many }) => ({
   albumArtists: many(albumArtists),
+}));
+
+export const weeklyBatchesRelations = relations(weeklyBatches, ({ one }) => ({
+  aiResponse: one(aiResponses, {
+    fields: [weeklyBatches.aiResponseId],
+    references: [aiResponses.id],
+  }),
 }));
