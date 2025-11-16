@@ -23,6 +23,9 @@
 					artists={album.artists}
 					blurb={album.blurb}
 					imageUrl={album.images.medium}
+					spotifyUrl={album.spotifyUrl}
+					appleMusicUrl={album.appleMusicUrl}
+					tidalUrl={album.tidalUrl}
 				/>
 			{/each}
 		{/if}

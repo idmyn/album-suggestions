@@ -3,6 +3,9 @@
 	export let artists: { name: string }[];
 	export let blurb: string;
 	export let imageUrl: string;
+	export let spotifyUrl: string;
+	export let appleMusicUrl: string | null;
+	export let tidalUrl: string | null;
 </script>
 
 <div class="album-card">
@@ -13,6 +16,36 @@
 		<h2 class="album-title">{name}</h2>
 		<p class="album-artist">{artists.map((a) => a.name).join(", ")}</p>
 		<p class="album-blurb">{blurb}</p>
+		<div class="streaming-links">
+			<a
+				href={spotifyUrl}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="streaming-link spotify"
+			>
+				Spotify
+			</a>
+			{#if tidalUrl}
+				<a
+					href={tidalUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="streaming-link tidal"
+				>
+					Tidal
+				</a>
+			{/if}
+			{#if appleMusicUrl}
+				<a
+					href={appleMusicUrl}
+					target="_blank"
+					rel="noopener noreferrer"
+					class="streaming-link apple-music"
+				>
+					Apple Music
+				</a>
+			{/if}
+		</div>
 	</div>
 </div>
 
@@ -55,5 +88,36 @@
 		line-height: 1.5;
 		margin-top: theme(spacing.2);
 		max-width: 40rem;
+	}
+
+	.streaming-links {
+		display: flex;
+		gap: 0.75rem;
+		margin-top: 0.75rem;
+	}
+
+	.streaming-link {
+		font-size: 0.875rem;
+		font-weight: 500;
+	}
+
+	.streaming-link.spotify {
+		color: rgb(22 163 74);
+	}
+
+	.streaming-link.spotify:hover {
+		color: rgb(21 128 61);
+	}
+
+	.streaming-link.apple-music {
+		color: rgb(219 39 119);
+	}
+
+	.streaming-link.apple-music:hover {
+		color: rgb(190 24 93);
+	}
+
+	.streaming-link.tidal:hover {
+		color: rgb(29 78 216);
 	}
 </style>
