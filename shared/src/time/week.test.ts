@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { weekIdFromDate, currentWeekId } from "./week-utils";
+import { weekIdFromDate, currentWeekId } from "./week";
 
 describe("weekIdFromDate", () => {
 	test("converts date to ISO week format", () => {

@@ -8,6 +8,49 @@ export class DatabaseError extends Data.TaggedError("DatabaseError")<{
   cause: unknown;
 }> {}
 
+const mapAlbumSuggestions = (
+  albumSuggestions: Array<{
+    blurb: string;
+    albums: {
+      spotifyId: string;
+      name: string;
+      releaseDate: string;
+      releaseDatePrecision: "year" | "month" | "day";
+      appleMusicUrl: string | null;
+      tidalUrl: string | null;
+      spotifyUrl: string;
+      smallImageUrl: string;
+      mediumImageUrl: string;
+      largeImageUrl: string;
+      albumArtists: Array<{
+        artist: {
+          spotifyId: string;
+          name: string;
+        };
+      }>;
+    };
+  }>,
+): AlbumSuggestions["albums"] =>
+  albumSuggestions.map((albumSuggestion) => ({
+    id: albumSuggestion.albums.spotifyId,
+    name: albumSuggestion.albums.name,
+    releaseDate: albumSuggestion.albums.releaseDate,
+    releaseDatePrecision: albumSuggestion.albums.releaseDatePrecision,
+    appleMusicUrl: albumSuggestion.albums.appleMusicUrl,
+    tidalUrl: albumSuggestion.albums.tidalUrl,
+    spotifyUrl: albumSuggestion.albums.spotifyUrl,
+    blurb: albumSuggestion.blurb,
+    artists: albumSuggestion.albums.albumArtists.map((albumArtist) => ({
+      id: albumArtist.artist.spotifyId,
+      name: albumArtist.artist.name,
+    })),
+    images: {
+      small: albumSuggestion.albums.smallImageUrl,
+      medium: albumSuggestion.albums.mediumImageUrl,
+      large: albumSuggestion.albums.largeImageUrl,
+    },
+  }));
+
 export type AlbumSuggestions = {
   createdAt: Date;
   albums: Array<{
@@ -61,6 +104,12 @@ export class Database extends Context.Tag("Database")<
       Option.Option<AlbumSuggestions>,
       DatabaseError
     >;
+
+    getSuggestionsByWeekId: (
+      weekId: string,
+    ) => Effect.Effect<Option.Option<AlbumSuggestions>, DatabaseError>;
+
+    getRecentWeekIds: () => Effect.Effect<string[], DatabaseError>;
   }
 >() {}
 
@@ -194,39 +243,73 @@ export const DatabaseLive = Layer.effect(
 
               if (!data) return Option.none();
 
-              const albums: AlbumSuggestions["albums"] =
-                data.albumSuggestions.map((albumSuggestion) => ({
-                  id: albumSuggestion.albums.spotifyId,
-                  name: albumSuggestion.albums.name,
-                  releaseDate: albumSuggestion.albums.releaseDate,
-                  releaseDatePrecision:
-                    albumSuggestion.albums.releaseDatePrecision,
-                  appleMusicUrl: albumSuggestion.albums.appleMusicUrl,
-                  tidalUrl: albumSuggestion.albums.tidalUrl,
-                  spotifyUrl: albumSuggestion.albums.spotifyUrl,
-                  blurb: albumSuggestion.blurb,
-                  artists: albumSuggestion.albums.albumArtists.map(
-                    (albumArtist) => ({
-                      id: albumArtist.artist.spotifyId,
-                      name: albumArtist.artist.name,
-                    }),
-                  ),
-                  images: {
-                    small: albumSuggestion.albums.smallImageUrl,
-                    medium: albumSuggestion.albums.mediumImageUrl,
-                    large: albumSuggestion.albums.largeImageUrl,
-                  },
-                }));
-
               return Option.some({
                 createdAt: data.createdAt,
-                albums,
+                albums: mapAlbumSuggestions(data.albumSuggestions),
               });
             },
             catch: (cause) => new DatabaseError({ cause }),
           });
         },
       ),
+
+      getSuggestionsByWeekId: Effect.fn("db.getSuggestionsByWeekId")(
+        function* (weekId) {
+          return yield* Effect.tryPromise({
+            try: async () => {
+              const data = await db.query.weeklyBatches.findFirst({
+                where: (weeklyBatches, { eq }) => eq(weeklyBatches.weekId, weekId),
+                with: {
+                  aiResponse: {
+                    with: {
+                      albumSuggestions: {
+                        with: {
+                          albums: {
+                            with: {
+                              albumArtists: {
+                                with: {
+                                  artist: true,
+                                },
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              });
+
+              if (!data) return Option.none();
+
+              return Option.some({
+                createdAt: data.aiResponse.createdAt,
+                albums: mapAlbumSuggestions(data.aiResponse.albumSuggestions),
+              });
+            },
+            catch: (cause) => new DatabaseError({ cause }),
+          });
+        },
+      ),
+
+      getRecentWeekIds: Effect.fn("db.getRecentWeekIds")(function* () {
+        return yield* Effect.tryPromise({
+          try: async () => {
+            const data = await db.query.weeklyBatches.findMany({
+              orderBy: (weeklyBatches, { desc }) => [
+                desc(weeklyBatches.createdAt),
+              ],
+              limit: 10,
+              columns: {
+                weekId: true,
+              },
+            });
+
+            return data.map((row) => row.weekId);
+          },
+          catch: (cause) => new DatabaseError({ cause }),
+        });
+      }),
     };
   }),
 );
