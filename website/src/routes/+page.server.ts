@@ -1,6 +1,6 @@
 import { redirect } from "@sveltejs/kit";
-import { currentWeekId } from "shared";
+import { currentSuggestionWeekId } from "shared";
 
 export const load = () => {
-	redirect(307, `/week/${currentWeekId()}`);
+	redirect(307, `/week/${currentSuggestionWeekId()}`);
 };

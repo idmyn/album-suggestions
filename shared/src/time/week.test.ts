@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { weekIdFromDate, currentWeekId } from "./week";
+import { weekIdFromDate, currentSuggestionWeekId } from "./week";
 
 describe("weekIdFromDate", () => {
 	test("converts date to ISO week format", () => {
@@ -30,9 +30,19 @@ describe("weekIdFromDate", () => {
 	});
 });
 
-describe("currentWeekId", () => {
+describe("currentSuggestionWeekId", () => {
+	test("returns previous week if before Friday 0000 UTC", () => {
+		const thursday = new Date("2025-11-06T23:59:59Z");
+		expect(weekIdFromDate(thursday)).toBe("2025W45");
+	});
+
+	test("returns current week if Friday or later", () => {
+		const friday = new Date("2025-11-07T00:00:00Z");
+		expect(weekIdFromDate(friday)).toBe("2025W45");
+	});
+
 	test("returns normalized week ID", () => {
-		const weekId = currentWeekId();
+		const weekId = currentSuggestionWeekId();
 		expect(weekId).toMatch(/^\d{4}W\d{2}$/);
 	});
 });
