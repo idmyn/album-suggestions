@@ -12,10 +12,9 @@
 	<div class="album-image-container">
 		<img src={imageUrl} alt="{name} album art" class="album-image" />
 	</div>
-	<div class="album-info">
+	<div class="album-header">
 		<h2 class="album-title">{name}</h2>
 		<p class="album-artist">{artists.map((a) => a.name).join(", ")}</p>
-		<p class="album-blurb">{blurb}</p>
 		<div class="streaming-links">
 			<a
 				href={spotifyUrl}
@@ -47,53 +46,69 @@
 			{/if}
 		</div>
 	</div>
+	<div class="album-blurb-container">
+		<p class="album-blurb">{blurb}</p>
+	</div>
 </div>
 
 <style>
 	.album-card {
-		display: flex;
-		gap: 1rem;
-		margin-bottom: 2.5rem;
+		display: grid;
+		grid-template-columns: auto 1fr;
+		grid-template-rows: auto auto;
+		gap: theme(spacing.3);
+		row-gap: theme(spacing.1);
+		margin-bottom: theme(spacing.8);
 	}
 
 	.album-image-container {
 		position: relative;
-		flex-shrink: 0;
+		grid-row: 1;
+		grid-column: 1;
+		align-self: center;
 	}
 
 	.album-image {
-		width: 180px;
-		height: 180px;
+		width: 80px;
+		height: 80px;
 		object-fit: cover;
 	}
 
-	.album-info {
+	.album-header {
+		grid-row: 1;
+		grid-column: 2;
 		display: flex;
 		flex-direction: column;
+		justify-content: center;
+		align-self: center;
+	}
+
+	.album-blurb-container {
+		grid-row: 2;
+		grid-column: 1 / -1;
 	}
 
 	.album-title {
-		font-size: 1.25rem;
+		font-size: 1.125rem;
 		font-weight: 600;
 		margin: 0;
 	}
 
 	.album-artist {
-		font-size: 1rem;
-		margin: 0;
+		font-size: 0.875rem;
+		color: rgb(64 64 64);
 	}
 
 	.album-blurb {
-		font-size: 0.95rem;
+		font-size: 0.875rem;
 		line-height: 1.5;
-		margin-top: theme(spacing.2);
-		max-width: 40rem;
 	}
 
 	.streaming-links {
 		display: flex;
-		gap: 0.75rem;
-		margin-top: 0.75rem;
+		gap: theme(spacing.3);
+		margin-top: theme(spacing.1);
+		flex-wrap: wrap;
 	}
 
 	.streaming-link {
@@ -119,5 +134,54 @@
 
 	.streaming-link.tidal:hover {
 		color: rgb(29 78 216);
+	}
+
+	@media (min-width: 768px) {
+		.album-card {
+			grid-template-columns: auto 1fr;
+			grid-template-rows: auto 1fr;
+			column-gap: theme(spacing.4);
+			margin-bottom: 2.5rem;
+		}
+
+		.album-image-container {
+			grid-row: 1 / -1;
+			grid-column: 1;
+			align-self: start;
+		}
+
+		.album-image {
+			width: 180px;
+			height: 180px;
+		}
+
+		.album-header {
+			grid-row: 1;
+			grid-column: 2;
+			justify-content: center;
+		}
+
+		.album-blurb-container {
+			grid-row: 2;
+			grid-column: 2;
+		}
+
+		.album-title {
+			font-size: 1.25rem;
+		}
+
+		.album-artist {
+			font-size: 1rem;
+			color: inherit;
+		}
+
+		.album-blurb {
+			font-size: 0.95rem;
+			max-width: 40rem;
+		}
+
+		.streaming-links {
+			gap: 0.75rem;
+		}
 	}
 </style>

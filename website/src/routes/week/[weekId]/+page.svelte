@@ -4,13 +4,11 @@
 	export let data;
 </script>
 
-<div class="flex">
-	<nav>
-		<div class="text-xl font-medium">{data.weekId}</div>
-		<div class="about-link">
-			<a href="/about">about</a>
-		</div>
-	</nav>
+<div class="mobile-container">
+	<header>
+		<div class="week-id">{data.weekId}</div>
+		<a href="/about" class="about-link">about</a>
+	</header>
 
 	<main>
 		{#if !data.suggestions}
@@ -32,27 +30,32 @@
 </div>
 
 <style>
-	nav {
-		margin-left: 20vw;
-		position: sticky;
-		top: 10vh;
-		height: 80vh;
-		padding-right: theme(spacing.9);
-		margin-right: theme(spacing.9);
-		border-right: 1px solid black;
-
-		display: flex;
-		flex-direction: column;
-		justify-content: space-between;
-		text-align: right;
+	.mobile-container {
+		padding: theme(spacing.4);
+		min-height: 100vh;
+		max-width: 50rem;
+		margin: auto;
 	}
 
-	.about-link a {
+	header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: theme(spacing.4) 0;
+		margin-bottom: theme(spacing.6);
+		border-bottom: 1px solid black;
+	}
+
+	.week-id {
+		font-size: 1.25rem;
+		font-weight: 500;
+	}
+
+	.about-link {
 		text-decoration: underline;
 	}
 
 	main {
-		padding: theme(spacing.14) 0;
-		max-width: 40rem;
+		max-width: 100%;
 	}
 </style>
