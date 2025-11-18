@@ -1,14 +1,15 @@
 <script lang="ts">
 	import AlbumWithBlurb from "../../AlbumWithBlurb.svelte";
+	import Header from "../../Header.svelte";
 
 	export let data;
 </script>
 
 <div class="mobile-container">
-	<header>
+	<Header>
 		<div class="week-id">{data.weekId}</div>
 		<a href="/about" class="about-link">about</a>
-	</header>
+	</Header>
 
 	<main>
 		{#if !data.suggestions}
@@ -35,15 +36,6 @@
 		min-height: 100vh;
 		max-width: 50rem;
 		margin: auto;
-	}
-
-	header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: theme(spacing.4) 0;
-		margin-bottom: theme(spacing.6);
-		border-bottom: 1px solid black;
 	}
 
 	.week-id {
