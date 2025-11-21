@@ -10,29 +10,35 @@
 
 	<main>
 		<p>
-			Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod
-			tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-			veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
-			commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
-			velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat
-			cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id
-			est laborum.
+			I had a 'skill' (saved prompt) in <a
+				href="https://www.diabrowser.com"
+				target="_blank"
+				rel="noopener noreferrer">dia</a
+			> which would recommend me some recently released albums. When I stopped using
+			dia I still occasionally wanted to run that prompt, so I'd open dia and run
+			it.
 		</p>
 		<p>
-			Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium
-			doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo
-			inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.
-			Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut
-			fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem
-			sequi nesciunt.
+			That felt silly so I decided to find a new home for it, and figured it
+			should be pretty easy to build a little project which ran the prompt on a
+			regular schedule and nicely displayed the results... And now you're
+			looking at it!
 		</p>
-		<p>
-			Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet,
-			consectetur, adipisci velit, sed quia non numquam eius modi tempora
-			incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad
-			minima veniam, quis nostrum exercitationem ullam corporis suscipit
-			laboriosam, nisi ut aliquid ex ea commodi consequatur?
-		</p>
+		<p>A couple of notes on the implementation, in case you're interested:</p>
+		<ul class="list-disc pl-5 mb-4 space-y-1">
+			<li>the prompt is sent to Perplexity via OpenRouter</li>
+			<li>
+				I use the <a href="https://effect.website/docs/ai/introduction/"
+					>Effect AI</a
+				> package for this
+			</li>
+			<li>
+				this is a small program which is deployed to Cloudflare Workers and runs
+				on a schedule
+			</li>
+			<li>the frontend is a very simple SvelteKit application</li>
+			<li>I worked on it with <a href="https://ampcode.com/">Amp</a></li>
+		</ul>
 	</main>
 </div>
 
@@ -54,7 +60,12 @@
 	}
 
 	p {
-		margin-bottom: 1rem;
 		line-height: 1.5;
+		+ p {
+			margin-top: theme(space.3);
+		}
+		+ ul {
+			margin-top: theme(space.1);
+		}
 	}
 </style>

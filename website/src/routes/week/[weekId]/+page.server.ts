@@ -10,11 +10,23 @@ export const load = async ({ params }) => {
 		error(404, "Invalid week");
 	}
 
-	const suggestions = await effectQuery(() =>
+	const { suggestions, neighbors } = await effectQuery(() =>
 		Effect.gen(function* () {
 			const db = yield* Database;
 			const result = yield* db.getSuggestionsByWeekId(weekId);
-			return Option.getOrNull(result);
+			const allWeekIds = yield* db.getAllWeekIds();
+			const weekIndex = allWeekIds.indexOf(weekId);
+			return {
+				suggestions: Option.getOrNull(result),
+				neighbors: {
+					previousWeekId:
+						weekIndex > 0 ? allWeekIds[weekIndex - 1] : null,
+					nextWeekId:
+						weekIndex < allWeekIds.length - 1
+							? allWeekIds[weekIndex + 1]
+							: null,
+				},
+			};
 		}),
 	)();
 
@@ -22,5 +34,5 @@ export const load = async ({ params }) => {
 		error(404, "Week not found");
 	}
 
-	return { weekId, suggestions };
+	return { weekId, suggestions, neighbors };
 };

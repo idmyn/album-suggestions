@@ -109,6 +109,8 @@ export class Database extends Context.Tag("Database")<
       weekId: string,
     ) => Effect.Effect<Option.Option<AlbumSuggestions>, DatabaseError>;
 
+    getAllWeekIds: () => Effect.Effect<string[], DatabaseError>;
+
     getRecentWeekIds: () => Effect.Effect<string[], DatabaseError>;
   }
 >() {}
@@ -291,6 +293,22 @@ export const DatabaseLive = Layer.effect(
           });
         },
       ),
+
+      getAllWeekIds: Effect.fn("db.getAllWeekIds")(function* () {
+        return yield* Effect.tryPromise({
+          try: async () => {
+            const data = await db.query.weeklyBatches.findMany({
+              orderBy: (weeklyBatches, { asc }) => [asc(weeklyBatches.weekId)],
+              columns: {
+                weekId: true,
+              },
+            });
+
+            return data.map((row) => row.weekId);
+          },
+          catch: (cause) => new DatabaseError({ cause }),
+        });
+      }),
 
       getRecentWeekIds: Effect.fn("db.getRecentWeekIds")(function* () {
         return yield* Effect.tryPromise({
