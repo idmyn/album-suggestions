@@ -38,6 +38,14 @@
 			</li>
 			<li>the frontend is a very simple SvelteKit application</li>
 			<li>I worked on it with <a href="https://ampcode.com/">Amp</a></li>
+			<li>
+				you can check out
+				<a
+					href="https://github.com/idmyn/album-suggestions"
+					rel="noopener noreferrer"
+					target="_blank">the source code on GitHub</a
+				>
+			</li>
 		</ul>
 	</main>
 </div>

@@ -1,5 +1,3 @@
-# album suggestions
-
 purpose:
 
 - get suggested albums to listen to
