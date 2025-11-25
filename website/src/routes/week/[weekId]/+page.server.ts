@@ -1,9 +1,10 @@
 import { error } from "@sveltejs/kit";
+import type { PageServerLoad } from "./$types";
 import { Database } from "shared";
 import { Effect, Option } from "effect";
 import { effectQuery } from "$lib/effect";
 
-export const load = async ({ params }) => {
+export const load: PageServerLoad = async ({ params }) => {
 	const weekId = params.weekId;
 
 	if (!/^\d{4}W\d{2}$/.test(weekId)) {
