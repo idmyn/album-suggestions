@@ -8,15 +8,15 @@ const MODEL_ID = "perplexity/sonar-pro:online";
 const SonarProOnline = OpenRouterLanguageModel.model(MODEL_ID);
 
 const Album = Schema.Struct({
-  title: Schema.String,
-  artist: Schema.String,
-  blurb: Schema.String,
-  genres: Schema.Array(Schema.String),
+	title: Schema.String,
+	artist: Schema.String,
+	blurb: Schema.String,
+	genres: Schema.Array(Schema.String),
 });
 export type Album = Schema.Schema.Type<typeof Album>;
 
 const responseSchema = Schema.Struct({
-  albums: Schema.Array(Album),
+	albums: Schema.Array(Album),
 });
 
 const prompt = `
@@ -29,35 +29,34 @@ Pay extra attention to reviews from theneedledrop on youtube, stereofox, and pit
 `;
 
 export const askForAlbums = Effect.fn("askForAlbums")(function* () {
-  const db = yield* Database;
+	const db = yield* Database;
 
-  const response = yield* LanguageModel.generateObject({
-    prompt: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: prompt,
-          },
-        ],
-      },
-    ],
-    schema: responseSchema,
-  }).pipe(Effect.provide(SonarProOnline));
+	const response = yield* LanguageModel.generateObject({
+		prompt: [
+			{
+				role: "user",
+				content: [
+					{
+						type: "text",
+						text: prompt,
+					},
+				],
+			},
+		],
+		schema: responseSchema,
+	}).pipe(Effect.provide(SonarProOnline));
 
-  const aiResponseId = yield* db.insertAiResponse({
-    prompt,
-    outputSchema: responseSchema.toString(),
-    model: MODEL_ID,
-    output: JSON.stringify(response.value),
-  });
+	const aiResponseId = yield* db.insertAiResponse({
+		prompt,
+		outputSchema: responseSchema.toString(),
+		model: MODEL_ID,
+		output: JSON.stringify(response.value),
+	});
 
-  yield* Effect.annotateCurrentSpan({ aiResponseId });
+	yield* Effect.annotateCurrentSpan({ aiResponseId });
 
-  return {
-    aiResponseId,
-    albums: response.value.albums,
-  };
+	return {
+		aiResponseId,
+		albums: response.value.albums,
+	};
 });
-

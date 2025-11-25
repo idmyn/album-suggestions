@@ -19,8 +19,7 @@ export const load = async ({ params }) => {
 			return {
 				suggestions: Option.getOrNull(result),
 				neighbors: {
-					previousWeekId:
-						weekIndex > 0 ? allWeekIds[weekIndex - 1] : null,
+					previousWeekId: weekIndex > 0 ? allWeekIds[weekIndex - 1] : null,
 					nextWeekId:
 						weekIndex < allWeekIds.length - 1
 							? allWeekIds[weekIndex + 1]
