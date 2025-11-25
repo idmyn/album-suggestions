@@ -5,7 +5,6 @@ import { Database } from "shared";
 
 const MODEL_ID = "perplexity/sonar-pro:online";
 
-//const Sonar = OpenRouterLanguageModel.model("perplexity/sonar");
 const SonarProOnline = OpenRouterLanguageModel.model(MODEL_ID);
 
 const Album = Schema.Struct({
@@ -62,24 +61,3 @@ export const askForAlbums = Effect.fn("askForAlbums")(function* () {
   };
 });
 
-export const MOCK_ALBUMS = [
-  {
-    title: "Don't Trust Mirrors",
-    artist: "Kelly Moran",
-    releaseDate: "October 1, 2025",
-    spotifyUrl: "https://open.spotify.com/album/placeholder-donttrustmirrors",
-  },
-  {
-    title: "Unplugged (20th Anniversary)",
-    artist: "Alicia Keys",
-    releaseDate: "October 3, 2025",
-    spotifyUrl: "https://open.spotify.com/album/placeholder-alicia-unplugged",
-  },
-  {
-    title: "Blasting Off",
-    artist: "Buscrates",
-    releaseDate: "October 10, 2025",
-    spotifyUrl:
-      "https://open.spotify.com/album/placeholder-buscrates-blastingoff",
-  },
-];

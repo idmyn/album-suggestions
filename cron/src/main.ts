@@ -1,7 +1,5 @@
-import { LanguageModel } from "@effect/ai";
 import {
   OpenRouterClient,
-  OpenRouterLanguageModel,
 } from "@effect/ai-openrouter";
 import { FetchHttpClient } from "@effect/platform";
 import {
@@ -13,9 +11,8 @@ import {
   Layer,
   Schema,
   Stream,
-  Option,
 } from "effect";
-import { askForAlbums, MOCK_ALBUMS } from "./askForAlbums";
+import { askForAlbums } from "./askForAlbums";
 import { searchForAlbums } from "./spotify";
 import { getSongLinks } from "./songLink";
 import { Database, DatabaseLive, currentWeekId } from "shared";
