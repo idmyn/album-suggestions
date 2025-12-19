@@ -1,7 +1,10 @@
-Look in .context/effect for patterns on how to use Effect
-
 When planning, sacrifice grammar for the sake of concision.
 
-Please ask me for confirmation on any generated plans before saving them as tasks.
+## btca
 
-We track work in Beads instead of Markdown. You should use it via MCP.
+Trigger: user says "use btca" (for codebase/docs questions).
+
+Run:
+- btca ask -t <tech> -q "<question>"
+
+Available <tech>: effect
