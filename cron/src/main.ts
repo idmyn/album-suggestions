@@ -1,5 +1,5 @@
 import { OpenRouterClient } from "@effect/ai-openrouter";
-import { FetchHttpClient } from "@effect/platform";
+import { FetchHttpClient, HttpClient } from "@effect/platform";
 import {
 	Array,
 	Config,
@@ -7,19 +7,23 @@ import {
 	Console,
 	Effect,
 	Layer,
-	Schema,
 	Stream,
 } from "effect";
-import { askForAlbums } from "./askForAlbums";
-import { searchForAlbums } from "./spotify";
-import { getSongLinks } from "./songLink";
+import { AiService, AiServiceLive } from "./askForAlbums";
+import { SpotifyService, SpotifyServiceLive } from "./spotify";
+import { SongLinkService, SongLinkServiceLive } from "./songLink";
 import { Database, DatabaseLive, currentSuggestionWeekId } from "shared";
 import { HoneycombLayer } from "./otel";
 
 const program = Effect.gen(function* () {
-	const { aiResponseId, albums } = yield* askForAlbums();
+	const ai = yield* AiService;
+	const spotify = yield* SpotifyService;
+	const songLink = yield* SongLinkService;
+	const db = yield* Database;
 
-	const foundAlbums = yield* searchForAlbums(albums);
+	const { aiResponseId, albums } = yield* ai.askForAlbums();
+
+	const foundAlbums = yield* spotify.searchForAlbums(albums);
 
 	const albumsWithLinks = yield* Stream.filterMap(
 		foundAlbums,
@@ -28,15 +32,13 @@ const program = Effect.gen(function* () {
 		Stream.mapEffect(
 			(albumWithBlurb) =>
 				Effect.gen(function* () {
-					const songLinks = yield* getSongLinks(albumWithBlurb.spotifyUrl);
+					const songLinks = yield* songLink.getLinks(albumWithBlurb.spotifyUrl);
 					return { ...albumWithBlurb, songLinks };
 				}),
 			{ concurrency: 10 },
 		),
 		Stream.runCollect,
 	);
-
-	const db = yield* Database;
 
 	const albumsArray = Array.fromIterable(albumsWithLinks);
 
@@ -64,15 +66,29 @@ const program = Effect.gen(function* () {
 	);
 }).pipe(Effect.withSpan("cron.run"));
 
-const OpenRouter = OpenRouterClient.layerConfig({
+const OpenRouterLive = OpenRouterClient.layerConfig({
 	apiKey: Config.redacted("OPENROUTER_API_KEY"),
 }).pipe(Layer.provide(FetchHttpClient.layer));
 
+const AiServiceWithDeps = AiServiceLive.pipe(
+	Layer.provide(DatabaseLive),
+	Layer.provide(OpenRouterLive),
+);
+
+const SpotifyServiceWithDeps = SpotifyServiceLive.pipe(
+	Layer.provide(FetchHttpClient.layer),
+);
+
+const SongLinkServiceWithDeps = SongLinkServiceLive.pipe(
+	Layer.provide(FetchHttpClient.layer),
+);
+
 const MainLayer = Layer.mergeAll(
-	OpenRouter,
-	FetchHttpClient.layer,
 	DatabaseLive,
 	HoneycombLayer,
+	AiServiceWithDeps,
+	SpotifyServiceWithDeps,
+	SongLinkServiceWithDeps,
 );
 
 const programWithLayer = Effect.provide(program, MainLayer);
