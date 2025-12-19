@@ -15,7 +15,7 @@ import { SongLinkService, SongLinkServiceLive } from "./songLink";
 import { Database, DatabaseLive, currentSuggestionWeekId } from "shared";
 import { HoneycombLayer } from "./otel";
 
-const program = Effect.gen(function* () {
+export const program = Effect.gen(function* () {
 	const ai = yield* AiService;
 	const spotify = yield* SpotifyService;
 	const songLink = yield* SongLinkService;
