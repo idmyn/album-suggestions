@@ -1,10 +1,18 @@
-import { describe, test, expect, mock } from "bun:test";
-import { Effect, Layer, Option, Stream } from "effect";
+import { describe, test, expect } from "bun:test";
+import { Effect, Layer, ManagedRuntime, Option, Stream } from "effect";
+
+const makeDisposableRuntime = <R, E>(layer: Layer.Layer<R, E>) => {
+	const runtime = ManagedRuntime.make(layer);
+	return Object.assign(runtime, {
+		[Symbol.asyncDispose]: () => runtime.dispose(),
+	});
+};
 import { program } from "./main";
 import { AiService, type Album } from "./askForAlbums";
 import { SpotifyService, type SpotifyAlbumWithBlurb } from "./spotify";
 import { SongLinkService, type SongLinks } from "./songLink";
 import { Database } from "shared";
+import { DatabaseTestLive } from "./testUtils";
 
 const mockAlbum: Album = {
 	title: "Test Album",
@@ -53,15 +61,27 @@ const mockSongLinks: SongLinks = {
 
 describe("cron program", () => {
 	test("happy path: fetches albums, enriches with links, inserts to db", async () => {
-		const insertWeeklyBatchMock = mock((_batch) => Effect.void);
-
-		const TestAiService = Layer.succeed(AiService, {
-			askForAlbums: () =>
-				Effect.succeed({
-					aiResponseId: "ai-response-123",
-					albums: [mockAlbum],
-				}),
-		});
+		const TestAiService = Layer.effect(
+			AiService,
+			Effect.gen(function* () {
+				const db = yield* Database;
+				return {
+					askForAlbums: () =>
+						Effect.gen(function* () {
+							const aiResponseId = yield* db.insertAiResponse({
+								prompt: "test prompt",
+								outputSchema: "test schema",
+								model: "test-model",
+								output: JSON.stringify({ albums: [mockAlbum] }),
+							});
+							return {
+								aiResponseId,
+								albums: [mockAlbum],
+							};
+						}),
+				};
+			}),
+		);
 
 		const TestSpotifyService = Layer.succeed(SpotifyService, {
 			searchForAlbums: () =>
@@ -72,40 +92,46 @@ describe("cron program", () => {
 			getLinks: () => Effect.succeed(mockSongLinks),
 		});
 
-		const TestDatabase = Layer.succeed(Database, {
-			insertAiResponse: () => Effect.succeed("unused"),
-			insertWeeklyBatch: (data) => insertWeeklyBatchMock(data),
-			getLatestAlbumSuggestions: () => Effect.succeed(Option.none()),
-			getSuggestionsByWeekId: () => Effect.succeed(Option.none()),
-			getAllWeekIds: () => Effect.succeed([]),
-			getRecentWeekIds: () => Effect.succeed([]),
-		});
+		const TestAiServiceWithDb = TestAiService.pipe(
+			Layer.provide(DatabaseTestLive),
+		);
 
 		const TestLayer = Layer.mergeAll(
-			TestAiService,
+			TestAiServiceWithDb,
 			TestSpotifyService,
 			TestSongLinkService,
-			TestDatabase,
+			DatabaseTestLive,
 		);
 
-		await Effect.runPromise(Effect.provide(program, TestLayer));
+		await using runtime = makeDisposableRuntime(TestLayer);
 
-		expect(insertWeeklyBatchMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				aiResponseId: "ai-response-123",
-				albums: [
-					expect.objectContaining({
-						id: "spotify-123",
-						name: "Test Album",
-						blurb: "A great album",
-						spotifyUrl: "https://open.spotify.com/album/123",
-						appleMusicUrl: "https://music.apple.com/album/123",
-						tidalUrl: "https://tidal.com/album/123",
-						artists: [{ id: "artist-1", name: "Test Artist" }],
-						smallImageUrl: "https://img.spotify.com/small.jpg",
-					}),
-				],
+		await runtime.runPromise(program);
+
+		const result = await runtime.runPromise(
+			Effect.gen(function* () {
+				const db = yield* Database;
+				return yield* db.getLatestAlbumSuggestions();
 			}),
 		);
+
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			const { albums } = result.value;
+			expect(albums).toHaveLength(1);
+			expect(albums[0]).toEqual(
+				expect.objectContaining({
+					id: "spotify-123",
+					name: "Test Album",
+					blurb: "A great album",
+					spotifyUrl: "https://open.spotify.com/album/123",
+					appleMusicUrl: "https://music.apple.com/album/123",
+					tidalUrl: "https://tidal.com/album/123",
+					artists: [{ id: "artist-1", name: "Test Artist" }],
+					images: expect.objectContaining({
+						small: "https://img.spotify.com/small.jpg",
+					}),
+				}),
+			);
+		}
 	});
 });
