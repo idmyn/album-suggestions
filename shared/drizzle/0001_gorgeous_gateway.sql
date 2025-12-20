@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `album_suggestions_album_id_unique` ON `album_suggestions` (`albumId`);

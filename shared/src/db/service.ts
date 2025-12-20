@@ -115,6 +115,8 @@ export class Database extends Context.Tag("Database")<
 		getAllWeekIds: () => Effect.Effect<string[], DatabaseError>;
 
 		getRecentWeekIds: () => Effect.Effect<string[], DatabaseError>;
+
+		getAllSuggestedAlbumIds: () => Effect.Effect<string[], DatabaseError>;
 	}
 >() {}
 
@@ -319,6 +321,19 @@ export const makeDatabaseImpl = (db: DrizzleDb): Context.Tag.Service<Database> =
 				});
 
 				return data.map((row) => row.weekId);
+			},
+			catch: (cause) => new DatabaseError({ cause }),
+		});
+	}),
+
+	getAllSuggestedAlbumIds: Effect.fn("db.getAllSuggestedAlbumIds")(function* () {
+		return yield* Effect.tryPromise({
+			try: async () => {
+				const data = await db.query.albumSuggestions.findMany({
+					columns: { albumId: true },
+				});
+
+				return data.map((row) => row.albumId);
 			},
 			catch: (cause) => new DatabaseError({ cause }),
 		});

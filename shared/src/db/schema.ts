@@ -3,6 +3,7 @@ import {
 	text,
 	integer,
 	primaryKey,
+	uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 import { relations } from "drizzle-orm";
 
@@ -48,19 +49,23 @@ export const albumArtists = sqliteTable(
 	(table) => [primaryKey({ columns: [table.albumId, table.artistId] })],
 );
 
-export const albumSuggestions = sqliteTable("album_suggestions", {
-	id: text().primaryKey(),
-	aiResponseId: text().references(() => aiResponses.id, {
-		onDelete: "set null",
-	}),
-	albumId: text()
-		.notNull()
-		.references(() => albums.spotifyId),
-	blurb: text().notNull(),
-	createdAt: integer({ mode: "timestamp" })
-		.notNull()
-		.$defaultFn(() => new Date()),
-});
+export const albumSuggestions = sqliteTable(
+	"album_suggestions",
+	{
+		id: text().primaryKey(),
+		aiResponseId: text().references(() => aiResponses.id, {
+			onDelete: "set null",
+		}),
+		albumId: text()
+			.notNull()
+			.references(() => albums.spotifyId),
+		blurb: text().notNull(),
+		createdAt: integer({ mode: "timestamp" })
+			.notNull()
+			.$defaultFn(() => new Date()),
+	},
+	(table) => [uniqueIndex("album_suggestions_album_id_unique").on(table.albumId)],
+);
 
 export const weeklyBatches = sqliteTable("weekly_batches", {
 	weekId: text().primaryKey(),
