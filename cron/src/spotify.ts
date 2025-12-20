@@ -1,45 +1,28 @@
 import {
 	Config,
+	ConfigError,
 	Console,
+	Context,
 	Effect,
+	Layer,
 	Redacted,
 	Schema,
 	Option,
 	Stream,
 } from "effect";
 import type { Album } from "./askForAlbums";
-import { HttpClient, HttpClientRequest } from "@effect/platform";
+import {
+	HttpClient,
+	HttpClientRequest,
+	HttpClientError,
+} from "@effect/platform";
+import { ParseError } from "effect/ParseResult";
 
 const TokenResponse = Schema.Struct({
 	access_token: Schema.String,
 	token_type: Schema.String,
 	expires_in: Schema.Number,
 });
-
-export const fetchAccessToken = Effect.fn("spotify.fetchAccessToken")(
-	function* () {
-		const client = yield* HttpClient.HttpClient;
-
-		const clientId = yield* Config.redacted("SPOTIFY_CLIENT_ID");
-		const clientSecret = yield* Config.redacted("SPOTIFY_CLIENT_SECRET");
-
-		const json = yield* HttpClientRequest.post(
-			"https://accounts.spotify.com/api/token",
-		).pipe(
-			HttpClientRequest.bodyUrlParams({
-				grant_type: "client_credentials",
-				client_id: Redacted.value(clientId),
-				client_secret: Redacted.value(clientSecret),
-			}),
-			client.execute,
-			Effect.flatMap((res) => res.json),
-		);
-
-		const response = yield* Schema.decodeUnknown(TokenResponse)(json);
-
-		return response.access_token;
-	},
-);
 
 const SpotifySearchResponse = Schema.Struct({
 	albums: Schema.Struct({
@@ -127,54 +110,112 @@ const SpotifySearchResponse = Schema.Struct({
 	),
 );
 
-export const searchForAlbums = Effect.fn("spotify.searchForAlbums")(function* (
-	albums: readonly Album[],
-) {
-	const accessToken = yield* fetchAccessToken();
+export type SpotifyAlbum = Schema.Schema.Type<typeof SpotifySearchResponse>[0];
 
-	return Stream.fromIterable(albums).pipe(
-		Stream.mapEffect(
-			(album) =>
-				Effect.gen(function* () {
-					const spotifyAlbumOption = yield* getSpotifyAlbum(accessToken, album);
+export type SpotifyAlbumWithBlurb = SpotifyAlbum & { blurb: string };
 
-					if (Option.isNone(spotifyAlbumOption)) {
-						yield* Console.error(
-							`⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
-						);
-					}
+type SpotifyServiceError =
+	| ConfigError.ConfigError
+	| ParseError
+	| HttpClientError.HttpClientError;
 
-					return Option.map(spotifyAlbumOption, (spotifyAlbum) => ({
-						...spotifyAlbum,
-						blurb: album.blurb,
-					}));
-				}),
-			{ concurrency: 10 },
-		),
-	);
-});
+export class SpotifyService extends Context.Tag("SpotifyService")<
+	SpotifyService,
+	{
+		searchForAlbums: (
+			albums: readonly Album[],
+		) => Effect.Effect<
+			Stream.Stream<
+				Option.Option<SpotifyAlbumWithBlurb>,
+				ParseError | HttpClientError.HttpClientError
+			>,
+			SpotifyServiceError
+		>;
+	}
+>() {}
 
-const getSpotifyAlbum = Effect.fn(function* (
-	accessToken: string,
-	album: Album,
-) {
-	const client = yield* HttpClient.HttpClient;
+export const SpotifyServiceLive = Layer.effect(
+	SpotifyService,
+	Effect.gen(function* () {
+		const client = yield* HttpClient.HttpClient;
 
-	const query = `album:${album.title} artist:${album.artist}`;
+		const fetchAccessToken = Effect.fn("spotify.fetchAccessToken")(
+			function* () {
+				const clientId = yield* Config.redacted("SPOTIFY_CLIENT_ID");
+				const clientSecret = yield* Config.redacted("SPOTIFY_CLIENT_SECRET");
 
-	const json = yield* HttpClientRequest.get(
-		"https://api.spotify.com/v1/search",
-	).pipe(
-		HttpClientRequest.setUrlParam("q", query),
-		HttpClientRequest.setUrlParam("type", "album"),
-		HttpClientRequest.bearerToken(accessToken),
-		client.execute,
-		Effect.flatMap((res) => res.json),
-	);
+				const json = yield* HttpClientRequest.post(
+					"https://accounts.spotify.com/api/token",
+				).pipe(
+					HttpClientRequest.bodyUrlParams({
+						grant_type: "client_credentials",
+						client_id: Redacted.value(clientId),
+						client_secret: Redacted.value(clientSecret),
+					}),
+					client.execute,
+					Effect.flatMap((res) => res.json),
+				);
 
-	const response = yield* Schema.decodeUnknown(SpotifySearchResponse)(json);
+				const response = yield* Schema.decodeUnknown(TokenResponse)(json);
 
-	const firstResult = response[0];
+				return response.access_token;
+			},
+		);
 
-	return Option.fromNullable(firstResult);
-});
+		const getSpotifyAlbum = Effect.fn(function* (
+			accessToken: string,
+			album: Album,
+		) {
+			const query = `album:${album.title} artist:${album.artist}`;
+
+			const json = yield* HttpClientRequest.get(
+				"https://api.spotify.com/v1/search",
+			).pipe(
+				HttpClientRequest.setUrlParam("q", query),
+				HttpClientRequest.setUrlParam("type", "album"),
+				HttpClientRequest.bearerToken(accessToken),
+				client.execute,
+				Effect.flatMap((res) => res.json),
+			);
+
+			const response =
+				yield* Schema.decodeUnknown(SpotifySearchResponse)(json);
+
+			const firstResult = response[0];
+
+			return Option.fromNullable(firstResult);
+		});
+
+		return {
+			searchForAlbums: Effect.fn("spotify.searchForAlbums")(function* (
+				albums: readonly Album[],
+			) {
+				const accessToken = yield* fetchAccessToken();
+
+				return Stream.fromIterable(albums).pipe(
+					Stream.mapEffect(
+						(album) =>
+							Effect.gen(function* () {
+								const spotifyAlbumOption = yield* getSpotifyAlbum(
+									accessToken,
+									album,
+								);
+
+								if (Option.isNone(spotifyAlbumOption)) {
+									yield* Console.error(
+										`⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
+									);
+								}
+
+								return Option.map(spotifyAlbumOption, (spotifyAlbum) => ({
+									...spotifyAlbum,
+									blurb: album.blurb,
+								}));
+							}),
+						{ concurrency: 10 },
+					),
+				);
+			}),
+		};
+	}),
+);

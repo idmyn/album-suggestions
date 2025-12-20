@@ -1,7 +1,7 @@
-import { LanguageModel } from "@effect/ai";
-import { OpenRouterLanguageModel } from "@effect/ai-openrouter";
-import { Effect, Schema } from "effect";
-import { Database } from "shared";
+import { AiError, LanguageModel } from "@effect/ai";
+import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter";
+import { Context, Effect, Layer, Schema } from "effect";
+import { Database, DatabaseError } from "shared";
 
 const MODEL_ID = "perplexity/sonar-pro:online";
 
@@ -28,35 +28,61 @@ In particular, I'm interested in new pop, hiphop, and electronic genres. But wel
 Pay extra attention to reviews from theneedledrop on youtube, stereofox, and pitchfork
 `;
 
-export const askForAlbums = Effect.fn("askForAlbums")(function* () {
-	const db = yield* Database;
+export interface AiResponse {
+	readonly aiResponseId: string;
+	readonly albums: readonly Album[];
+}
 
-	const response = yield* LanguageModel.generateObject({
-		prompt: [
-			{
-				role: "user",
-				content: [
-					{
-						type: "text",
-						text: prompt,
-					},
-				],
-			},
-		],
-		schema: responseSchema,
-	}).pipe(Effect.provide(SonarProOnline));
+export class AiService extends Context.Tag("AiService")<
+	AiService,
+	{
+		askForAlbums: () => Effect.Effect<AiResponse, DatabaseError | AiError.AiError>;
+	}
+>() {}
 
-	const aiResponseId = yield* db.insertAiResponse({
-		prompt,
-		outputSchema: responseSchema.toString(),
-		model: MODEL_ID,
-		output: JSON.stringify(response.value),
-	});
+export const AiServiceLive = Layer.effect(
+	AiService,
+	Effect.gen(function* () {
+		const db = yield* Database;
+		const openRouterClient = yield* OpenRouterClient.OpenRouterClient;
 
-	yield* Effect.annotateCurrentSpan({ aiResponseId });
+		return {
+			askForAlbums: Effect.fn("askForAlbums")(function* () {
+				const response = yield* LanguageModel.generateObject({
+					prompt: [
+						{
+							role: "user",
+							content: [
+								{
+									type: "text",
+									text: prompt,
+								},
+							],
+						},
+					],
+					schema: responseSchema,
+				}).pipe(
+					Effect.provide(SonarProOnline),
+					Effect.provideService(
+						OpenRouterClient.OpenRouterClient,
+						openRouterClient,
+					),
+				);
 
-	return {
-		aiResponseId,
-		albums: response.value.albums,
-	};
-});
+				const aiResponseId = yield* db.insertAiResponse({
+					prompt,
+					outputSchema: responseSchema.toString(),
+					model: MODEL_ID,
+					output: JSON.stringify(response.value),
+				});
+
+				yield* Effect.annotateCurrentSpan({ aiResponseId });
+
+				return {
+					aiResponseId,
+					albums: response.value.albums,
+				};
+			}),
+		};
+	}),
+);

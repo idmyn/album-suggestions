@@ -1,24 +1,25 @@
 {
-  "name": "cron",
-  "module": "index.ts",
-  "type": "module",
-  "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@effect/ai": "catalog:effect",
-    "@effect/ai-openrouter": "catalog:effect",
-    "@effect/platform": "catalog:effect",
-    "effect": "catalog:effect",
-    "shared": "workspace:*"
-  },
-  "scripts": {
-    "tsc": "tsc --noEmit",
-    "dev": "bun run dev.ts",
-    "deploy": "wrangler deploy"
-  }
+	"name": "cron",
+	"module": "index.ts",
+	"type": "module",
+	"private": true,
+	"devDependencies": {
+		"@types/bun": "latest"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	},
+	"dependencies": {
+		"@effect/ai": "catalog:effect",
+		"@effect/ai-openrouter": "catalog:effect",
+		"@effect/platform": "catalog:effect",
+		"effect": "catalog:effect",
+		"shared": "workspace:*"
+	},
+	"scripts": {
+		"test": "bun test",
+		"tsc": "tsc --noEmit",
+		"dev": "bun run dev.ts",
+		"deploy": "wrangler deploy"
+	}
 }
