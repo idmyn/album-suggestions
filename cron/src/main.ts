@@ -7,6 +7,7 @@ import {
 	Console,
 	Effect,
 	Layer,
+	ManagedRuntime,
 	Stream,
 } from "effect";
 import { AiService, AiServiceLive } from "./askForAlbums";
@@ -199,13 +200,18 @@ const MainLayer = Layer.mergeAll(
 	SongLinkServiceWithDeps,
 );
 
-const programWithLayer = Effect.provide(program, MainLayer);
+const disposableRuntime = () => {
+	const runtime = ManagedRuntime.make(MainLayer);
+	return Object.assign(runtime, {
+		[Symbol.asyncDispose]: () => runtime.dispose(),
+	});
+};
 
 export const run = async (env?: Env): Promise<void> => {
 	const programToRun = env
-		? programWithLayer.pipe(
-				Effect.withConfigProvider(ConfigProvider.fromJson(env)),
-			)
-		: programWithLayer;
-	await Effect.runPromise(programToRun);
+		? program.pipe(Effect.withConfigProvider(ConfigProvider.fromJson(env)))
+		: program;
+
+	await using runtime = disposableRuntime();
+	await runtime.runPromise(programToRun);
 };
