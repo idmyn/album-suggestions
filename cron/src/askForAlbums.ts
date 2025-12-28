@@ -1,7 +1,8 @@
 import { AiError, LanguageModel } from "@effect/ai";
 import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter";
+import { SqlError } from "@effect/sql";
 import { Context, Effect, Layer, Schema } from "effect";
-import { Database, DatabaseError } from "shared";
+import { Database } from "shared";
 
 const MODEL_ID = "perplexity/sonar-pro:online";
 
@@ -36,7 +37,7 @@ export interface AiResponse {
 export class AiService extends Context.Tag("AiService")<
 	AiService,
 	{
-		askForAlbums: () => Effect.Effect<AiResponse, DatabaseError | AiError.AiError>;
+		askForAlbums: () => Effect.Effect<AiResponse, SqlError.SqlError | AiError.AiError>;
 	}
 >() {}
 

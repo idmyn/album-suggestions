@@ -178,8 +178,7 @@ export const SpotifyServiceLive = Layer.effect(
 				Effect.flatMap((res) => res.json),
 			);
 
-			const response =
-				yield* Schema.decodeUnknown(SpotifySearchResponse)(json);
+			const response = yield* Schema.decodeUnknown(SpotifySearchResponse)(json);
 
 			const firstResult = response[0];
 
@@ -202,7 +201,7 @@ export const SpotifyServiceLive = Layer.effect(
 								);
 
 								if (Option.isNone(spotifyAlbumOption)) {
-									yield* Console.error(
+									yield* Console.warn(
 										`⚠️  No Spotify results found for "${album.title}" by ${album.artist}`,
 									);
 								}
