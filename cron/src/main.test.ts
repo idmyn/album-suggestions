@@ -96,11 +96,12 @@ describe("cron program", () => {
 			},
 		});
 
+		const dbLayer = DatabaseTestLive();
 		const TestLayer = Layer.mergeAll(
-			TestAiService.pipe(Layer.provide(DatabaseTestLive)),
+			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
-			DatabaseTestLive,
+			dbLayer,
 		);
 
 		await using runtime = makeDisposableRuntime(TestLayer);
@@ -174,11 +175,12 @@ describe("cron program", () => {
 			},
 		});
 
+		const dbLayer = DatabaseTestLive();
 		const TestLayer = Layer.mergeAll(
-			TestAiService.pipe(Layer.provide(DatabaseTestLive)),
+			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
-			DatabaseTestLive,
+			dbLayer,
 		);
 
 		await using runtime = makeDisposableRuntime(TestLayer);
@@ -256,11 +258,12 @@ describe("cron program", () => {
 			},
 		});
 
+		const dbLayer = DatabaseTestLive();
 		const TestLayer = Layer.mergeAll(
-			TestAiService.pipe(Layer.provide(DatabaseTestLive)),
+			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
-			DatabaseTestLive,
+			dbLayer,
 		);
 
 		await using runtime = makeDisposableRuntime(TestLayer);
@@ -357,11 +360,12 @@ describe("cron program", () => {
 			},
 		});
 
+		const dbLayer = DatabaseTestLive();
 		const TestLayer = Layer.mergeAll(
-			TestAiService.pipe(Layer.provide(DatabaseTestLive)),
+			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
-			DatabaseTestLive,
+			dbLayer,
 		);
 
 		await using runtime = makeDisposableRuntime(TestLayer);
@@ -427,11 +431,12 @@ describe("cron program", () => {
 			},
 		});
 
+		const dbLayer = DatabaseTestLive();
 		const TestLayer = Layer.mergeAll(
-			TestAiService.pipe(Layer.provide(DatabaseTestLive)),
+			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
-			DatabaseTestLive,
+			dbLayer,
 		);
 
 		await using runtime = makeDisposableRuntime(TestLayer);

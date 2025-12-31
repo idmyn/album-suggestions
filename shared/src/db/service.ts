@@ -1,58 +1,13 @@
-import { createClient } from "@libsql/client";
-import { Config, Context, Data, Effect, Layer, Option } from "effect";
-import { drizzle, type LibSQLDatabase } from "drizzle-orm/libsql";
-import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
+import { LibsqlClient } from "@effect/sql-libsql";
+import * as SqliteDrizzle from "@effect/sql-drizzle/Sqlite";
+import { SqlClient, SqlError } from "@effect/sql";
+import { Config, Context, Effect, Layer, Option } from "effect";
+import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
+import { desc, eq, asc } from "drizzle-orm";
 import * as schema from "./schema";
 import { nanoid } from "./utils";
 
-type DrizzleDb = BaseSQLiteDatabase<"async", unknown, typeof schema>;
-
-export class DatabaseError extends Data.TaggedError("DatabaseError")<{
-	cause: unknown;
-}> {}
-
-const mapAlbumSuggestions = (
-	albumSuggestions: Array<{
-		blurb: string;
-		albums: {
-			spotifyId: string;
-			name: string;
-			releaseDate: string;
-			releaseDatePrecision: "year" | "month" | "day";
-			appleMusicUrl: string | null;
-			tidalUrl: string | null;
-			spotifyUrl: string;
-			smallImageUrl: string;
-			mediumImageUrl: string;
-			largeImageUrl: string;
-			albumArtists: Array<{
-				artist: {
-					spotifyId: string;
-					name: string;
-				};
-			}>;
-		};
-	}>,
-): AlbumSuggestions["albums"] =>
-	albumSuggestions.map((albumSuggestion) => ({
-		id: albumSuggestion.albums.spotifyId,
-		name: albumSuggestion.albums.name,
-		releaseDate: albumSuggestion.albums.releaseDate,
-		releaseDatePrecision: albumSuggestion.albums.releaseDatePrecision,
-		appleMusicUrl: albumSuggestion.albums.appleMusicUrl,
-		tidalUrl: albumSuggestion.albums.tidalUrl,
-		spotifyUrl: albumSuggestion.albums.spotifyUrl,
-		blurb: albumSuggestion.blurb,
-		artists: albumSuggestion.albums.albumArtists.map((albumArtist) => ({
-			id: albumArtist.artist.spotifyId,
-			name: albumArtist.artist.name,
-		})),
-		images: {
-			small: albumSuggestion.albums.smallImageUrl,
-			medium: albumSuggestion.albums.mediumImageUrl,
-			large: albumSuggestion.albums.largeImageUrl,
-		},
-	}));
+type DrizzleDb = SqliteRemoteDatabase<typeof schema>;
 
 export type AlbumSuggestions = {
 	createdAt: Date;
@@ -82,7 +37,7 @@ export class Database extends Context.Tag("Database")<
 			outputSchema: string;
 			model: string;
 			output: string;
-		}) => Effect.Effect<string, DatabaseError>;
+		}) => Effect.Effect<string, SqlError.SqlError>;
 
 		insertWeeklyBatch: (data: {
 			weekId: string;
@@ -101,254 +56,282 @@ export class Database extends Context.Tag("Database")<
 				mediumImageUrl: string;
 				largeImageUrl: string;
 			}>;
-		}) => Effect.Effect<void, DatabaseError>;
+		}) => Effect.Effect<void, SqlError.SqlError>;
 
 		getLatestAlbumSuggestions: () => Effect.Effect<
 			Option.Option<AlbumSuggestions>,
-			DatabaseError
+			SqlError.SqlError
 		>;
 
 		getSuggestionsByWeekId: (
 			weekId: string,
-		) => Effect.Effect<Option.Option<AlbumSuggestions>, DatabaseError>;
+		) => Effect.Effect<Option.Option<AlbumSuggestions>, SqlError.SqlError>;
 
-		getAllWeekIds: () => Effect.Effect<string[], DatabaseError>;
+		getAllWeekIds: () => Effect.Effect<string[], SqlError.SqlError>;
 
-		getRecentWeekIds: () => Effect.Effect<string[], DatabaseError>;
+		getRecentWeekIds: () => Effect.Effect<string[], SqlError.SqlError>;
 
-		getAllSuggestedAlbumIds: () => Effect.Effect<string[], DatabaseError>;
+		getAllSuggestedAlbumIds: () => Effect.Effect<string[], SqlError.SqlError>;
 	}
 >() {}
 
-export const makeDatabaseImpl = (db: DrizzleDb): Context.Tag.Service<Database> => ({
+const fetchAlbumsForAiResponse = (
+	db: DrizzleDb,
+	aiResponseId: string,
+): Effect.Effect<AlbumSuggestions["albums"], SqlError.SqlError> =>
+	Effect.gen(function* () {
+		const suggestions = yield* db
+			.select({
+				blurb: schema.albumSuggestions.blurb,
+				spotifyId: schema.albums.spotifyId,
+				name: schema.albums.name,
+				releaseDate: schema.albums.releaseDate,
+				releaseDatePrecision: schema.albums.releaseDatePrecision,
+				appleMusicUrl: schema.albums.appleMusicUrl,
+				tidalUrl: schema.albums.tidalUrl,
+				spotifyUrl: schema.albums.spotifyUrl,
+				smallImageUrl: schema.albums.smallImageUrl,
+				mediumImageUrl: schema.albums.mediumImageUrl,
+				largeImageUrl: schema.albums.largeImageUrl,
+			})
+			.from(schema.albumSuggestions)
+			.innerJoin(
+				schema.albums,
+				eq(schema.albumSuggestions.albumId, schema.albums.spotifyId),
+			)
+			.where(eq(schema.albumSuggestions.aiResponseId, aiResponseId));
+
+		const albumIds = suggestions.map((s) => s.spotifyId);
+		if (albumIds.length === 0) return [];
+
+		const albumArtists = yield* db
+			.select({
+				albumId: schema.albumArtists.albumId,
+				artistId: schema.artists.spotifyId,
+				artistName: schema.artists.name,
+			})
+			.from(schema.albumArtists)
+			.innerJoin(
+				schema.artists,
+				eq(schema.albumArtists.artistId, schema.artists.spotifyId),
+			);
+
+		const artistsByAlbum = new Map<
+			string,
+			Array<{ id: string; name: string }>
+		>();
+		for (const aa of albumArtists) {
+			if (!albumIds.includes(aa.albumId)) continue;
+			if (!artistsByAlbum.has(aa.albumId)) {
+				artistsByAlbum.set(aa.albumId, []);
+			}
+			artistsByAlbum.get(aa.albumId)!.push({
+				id: aa.artistId,
+				name: aa.artistName,
+			});
+		}
+
+		return suggestions.map((s) => ({
+			id: s.spotifyId,
+			name: s.name,
+			releaseDate: s.releaseDate,
+			releaseDatePrecision: s.releaseDatePrecision as "year" | "month" | "day",
+			appleMusicUrl: s.appleMusicUrl,
+			tidalUrl: s.tidalUrl,
+			spotifyUrl: s.spotifyUrl,
+			blurb: s.blurb,
+			artists: artistsByAlbum.get(s.spotifyId) ?? [],
+			images: {
+				small: s.smallImageUrl,
+				medium: s.mediumImageUrl,
+				large: s.largeImageUrl,
+			},
+		}));
+	});
+
+export const makeDatabaseImpl = (
+	db: DrizzleDb,
+	sql: SqlClient.SqlClient,
+): Context.Tag.Service<Database> => ({
 	insertAiResponse: Effect.fn("db.insertAiResponse")(function* (data) {
 		const id = nanoid();
-		yield* Effect.tryPromise({
-			try: () =>
-				db.insert(schema.aiResponses).values({
-					id,
-					prompt: data.prompt,
-					outputSchema: data.outputSchema,
-					model: data.model,
-					output: data.output,
-					createdAt: new Date(),
-				}),
-			catch: (cause) => new DatabaseError({ cause }),
+		yield* db.insert(schema.aiResponses).values({
+			id,
+			prompt: data.prompt,
+			outputSchema: data.outputSchema,
+			model: data.model,
+			output: data.output,
+			createdAt: new Date(),
 		});
 		return id;
 	}),
 
 	insertWeeklyBatch: Effect.fn("db.insertWeeklyBatch")(function* (data) {
-		yield* Effect.tryPromise({
-			try: () =>
-				db.transaction(async (tx) => {
-					await tx
-						.insert(schema.weeklyBatches)
-						.values({
-							weekId: data.weekId,
-							aiResponseId: data.aiResponseId,
-							createdAt: new Date(),
-						})
-						.onConflictDoUpdate({
-							target: schema.weeklyBatches.weekId,
-							set: { aiResponseId: data.aiResponseId },
-						});
+		yield* sql.withTransaction(
+			Effect.gen(function* () {
+				yield* db
+					.insert(schema.weeklyBatches)
+					.values({
+						weekId: data.weekId,
+						aiResponseId: data.aiResponseId,
+						createdAt: new Date(),
+					})
+					.onConflictDoUpdate({
+						target: schema.weeklyBatches.weekId,
+						set: { aiResponseId: data.aiResponseId },
+					});
 
-					const allArtists = data.albums.flatMap((album) =>
-						album.artists.map((artist) => ({
-							spotifyId: artist.id,
-							name: artist.name,
-						})),
-					);
+				const allArtists = data.albums.flatMap((album) =>
+					album.artists.map((artist) => ({
+						spotifyId: artist.id,
+						name: artist.name,
+					})),
+				);
 
-					if (allArtists.length > 0) {
-						await tx
-							.insert(schema.artists)
-							.values(allArtists)
-							.onConflictDoNothing();
-					}
-
-					await tx
-						.insert(schema.albums)
-						.values(
-							data.albums.map((album) => ({
-								spotifyId: album.id,
-								name: album.name,
-								releaseDate: album.releaseDate,
-								releaseDatePrecision: album.releaseDatePrecision,
-								appleMusicUrl: album.appleMusicUrl ?? null,
-								tidalUrl: album.tidalUrl ?? null,
-								spotifyUrl: album.spotifyUrl,
-								smallImageUrl: album.smallImageUrl,
-								mediumImageUrl: album.mediumImageUrl,
-								largeImageUrl: album.largeImageUrl,
-							})),
-						)
+				if (allArtists.length > 0) {
+					yield* db
+						.insert(schema.artists)
+						.values(allArtists)
 						.onConflictDoNothing();
+				}
 
-					const albumArtistPairs = data.albums.flatMap((album) =>
-						album.artists.map((artist) => ({
-							albumId: album.id,
-							artistId: artist.id,
-						})),
-					);
-
-					if (albumArtistPairs.length > 0) {
-						await tx
-							.insert(schema.albumArtists)
-							.values(albumArtistPairs)
-							.onConflictDoNothing();
-					}
-
-					await tx.insert(schema.albumSuggestions).values(
+				yield* db
+					.insert(schema.albums)
+					.values(
 						data.albums.map((album) => ({
-							id: nanoid(),
-							aiResponseId: data.aiResponseId,
-							albumId: album.id,
-							blurb: album.blurb,
-							createdAt: new Date(),
+							spotifyId: album.id,
+							name: album.name,
+							releaseDate: album.releaseDate,
+							releaseDatePrecision: album.releaseDatePrecision,
+							appleMusicUrl: album.appleMusicUrl ?? null,
+							tidalUrl: album.tidalUrl ?? null,
+							spotifyUrl: album.spotifyUrl,
+							smallImageUrl: album.smallImageUrl,
+							mediumImageUrl: album.mediumImageUrl,
+							largeImageUrl: album.largeImageUrl,
 						})),
-					);
-				}),
-			catch: (cause) => new DatabaseError({ cause }),
-		});
+					)
+					.onConflictDoNothing();
+
+				const albumArtistPairs = data.albums.flatMap((album) =>
+					album.artists.map((artist) => ({
+						albumId: album.id,
+						artistId: artist.id,
+					})),
+				);
+
+				if (albumArtistPairs.length > 0) {
+					yield* db
+						.insert(schema.albumArtists)
+						.values(albumArtistPairs)
+						.onConflictDoNothing();
+				}
+
+				yield* db.insert(schema.albumSuggestions).values(
+					data.albums.map((album) => ({
+						id: nanoid(),
+						aiResponseId: data.aiResponseId,
+						albumId: album.id,
+						blurb: album.blurb,
+						createdAt: new Date(),
+					})),
+				);
+			}),
+		);
 	}),
 
 	getLatestAlbumSuggestions: Effect.fn("db.getLatestAlbumSuggestions")(
 		function* () {
-			return yield* Effect.tryPromise({
-				try: async () => {
-					const data = await db.query.aiResponses.findFirst({
-						orderBy: (aiResponses, { desc }) => [
-							desc(aiResponses.createdAt),
-						],
-						with: {
-							albumSuggestions: {
-								with: {
-									albums: {
-										with: {
-											albumArtists: {
-												with: {
-													artist: true,
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					});
+			const [latestResponse] = yield* db
+				.select({
+					id: schema.aiResponses.id,
+					createdAt: schema.aiResponses.createdAt,
+				})
+				.from(schema.aiResponses)
+				.orderBy(desc(schema.aiResponses.createdAt))
+				.limit(1);
 
-					if (!data) return Option.none();
+			if (!latestResponse) return Option.none();
 
-					return Option.some({
-						createdAt: data.createdAt,
-						albums: mapAlbumSuggestions(data.albumSuggestions),
-					});
-				},
-				catch: (cause) => new DatabaseError({ cause }),
+			const albums = yield* fetchAlbumsForAiResponse(db, latestResponse.id);
+
+			return Option.some({
+				createdAt: latestResponse.createdAt,
+				albums,
 			});
 		},
 	),
 
 	getSuggestionsByWeekId: Effect.fn("db.getSuggestionsByWeekId")(
 		function* (weekId) {
-			return yield* Effect.tryPromise({
-				try: async () => {
-					const data = await db.query.weeklyBatches.findFirst({
-						where: (weeklyBatches, { eq }) =>
-							eq(weeklyBatches.weekId, weekId),
-						with: {
-							aiResponse: {
-								with: {
-									albumSuggestions: {
-										with: {
-											albums: {
-												with: {
-													albumArtists: {
-														with: {
-															artist: true,
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					});
+			const [batch] = yield* db
+				.select({
+					aiResponseId: schema.weeklyBatches.aiResponseId,
+				})
+				.from(schema.weeklyBatches)
+				.where(eq(schema.weeklyBatches.weekId, weekId))
+				.limit(1);
 
-					if (!data) return Option.none();
+			if (!batch) return Option.none();
 
-					return Option.some({
-						createdAt: data.aiResponse.createdAt,
-						albums: mapAlbumSuggestions(data.aiResponse.albumSuggestions),
-					});
-				},
-				catch: (cause) => new DatabaseError({ cause }),
+			const [aiResponse] = yield* db
+				.select({
+					id: schema.aiResponses.id,
+					createdAt: schema.aiResponses.createdAt,
+				})
+				.from(schema.aiResponses)
+				.where(eq(schema.aiResponses.id, batch.aiResponseId))
+				.limit(1);
+
+			if (!aiResponse) return Option.none();
+
+			const albums = yield* fetchAlbumsForAiResponse(db, aiResponse.id);
+
+			return Option.some({
+				createdAt: aiResponse.createdAt,
+				albums,
 			});
 		},
 	),
 
 	getAllWeekIds: Effect.fn("db.getAllWeekIds")(function* () {
-		return yield* Effect.tryPromise({
-			try: async () => {
-				const data = await db.query.weeklyBatches.findMany({
-					orderBy: (weeklyBatches, { asc }) => [asc(weeklyBatches.weekId)],
-					columns: {
-						weekId: true,
-					},
-				});
+		const data = yield* db
+			.select({ weekId: schema.weeklyBatches.weekId })
+			.from(schema.weeklyBatches)
+			.orderBy(asc(schema.weeklyBatches.weekId));
 
-				return data.map((row) => row.weekId);
-			},
-			catch: (cause) => new DatabaseError({ cause }),
-		});
+		return data.map((row) => row.weekId);
 	}),
 
 	getRecentWeekIds: Effect.fn("db.getRecentWeekIds")(function* () {
-		return yield* Effect.tryPromise({
-			try: async () => {
-				const data = await db.query.weeklyBatches.findMany({
-					orderBy: (weeklyBatches, { desc }) => [
-						desc(weeklyBatches.createdAt),
-					],
-					limit: 10,
-					columns: {
-						weekId: true,
-					},
-				});
+		const data = yield* db
+			.select({ weekId: schema.weeklyBatches.weekId })
+			.from(schema.weeklyBatches)
+			.orderBy(desc(schema.weeklyBatches.createdAt))
+			.limit(10);
 
-				return data.map((row) => row.weekId);
-			},
-			catch: (cause) => new DatabaseError({ cause }),
-		});
+		return data.map((row) => row.weekId);
 	}),
 
 	getAllSuggestedAlbumIds: Effect.fn("db.getAllSuggestedAlbumIds")(function* () {
-		return yield* Effect.tryPromise({
-			try: async () => {
-				const data = await db.query.albumSuggestions.findMany({
-					columns: { albumId: true },
-				});
+		const data = yield* db
+			.select({ albumId: schema.albumSuggestions.albumId })
+			.from(schema.albumSuggestions);
 
-				return data.map((row) => row.albumId);
-			},
-			catch: (cause) => new DatabaseError({ cause }),
-		});
+		return data.map((row) => row.albumId);
 	}),
+});
+
+const LibsqlLive = LibsqlClient.layerConfig({
+	url: Config.string("TURSO_DATABASE_URL"),
+	authToken: Config.redacted("TURSO_AUTH_TOKEN"),
 });
 
 export const DatabaseLive = Layer.effect(
 	Database,
 	Effect.gen(function* () {
-		const url = yield* Config.string("TURSO_DATABASE_URL");
-		const authToken = yield* Config.string("TURSO_AUTH_TOKEN");
-
-		const client = createClient({ url, authToken });
-		const db = drizzle(client, { schema });
-
-		return makeDatabaseImpl(db);
+		const db = yield* SqliteDrizzle.make({ schema });
+		const sql = yield* SqlClient.SqlClient;
+		return makeDatabaseImpl(db, sql);
 	}),
-);
+).pipe(Layer.provide(LibsqlLive));

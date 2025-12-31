@@ -11,6 +11,10 @@
 		"typescript": "^5"
 	},
 	"dependencies": {
+		"@effect/experimental": "catalog:effect",
+		"@effect/sql": "catalog:effect",
+		"@effect/sql-drizzle": "catalog:effect",
+		"@effect/sql-libsql": "catalog:effect",
 		"@js-temporal/polyfill": "^0.5.1",
 		"@libsql/client": "catalog:drizzle",
 		"drizzle-orm": "catalog:drizzle",
