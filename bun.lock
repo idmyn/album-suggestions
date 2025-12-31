@@ -30,6 +30,7 @@
         "@effect/platform": "catalog:effect",
         "@effect/sql": "catalog:effect",
         "@effect/sql-drizzle": "catalog:effect",
+        "drizzle-orm": "catalog:drizzle",
         "effect": "catalog:effect",
         "shared": "workspace:*",
       },

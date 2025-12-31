@@ -5,7 +5,8 @@
 	"private": true,
 	"devDependencies": {
 		"@types/bun": "latest",
-		"@effect/sql-sqlite-bun": "^0.38.0"
+		"@effect/sql-sqlite-bun": "^0.38.0",
+		"drizzle-orm": "catalog:drizzle"
 	},
 	"peerDependencies": {
 		"typescript": "^5"
