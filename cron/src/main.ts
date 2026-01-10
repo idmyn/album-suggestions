@@ -200,18 +200,20 @@ const MainLayer = Layer.mergeAll(
 	SongLinkServiceWithDeps,
 );
 
-const disposableRuntime = () => {
-	const runtime = ManagedRuntime.make(MainLayer);
+const disposableRuntime = (env?: Env) => {
+	const configLayer = env
+		? Layer.setConfigProvider(ConfigProvider.fromJson(env))
+		: Layer.empty;
+
+	const MainLayerWithConfig = MainLayer.pipe(Layer.provide(configLayer));
+
+	const runtime = ManagedRuntime.make(MainLayerWithConfig);
 	return Object.assign(runtime, {
 		[Symbol.asyncDispose]: () => runtime.dispose(),
 	});
 };
 
 export const run = async (env?: Env): Promise<void> => {
-	const programToRun = env
-		? program.pipe(Effect.withConfigProvider(ConfigProvider.fromJson(env)))
-		: program;
-
-	await using runtime = disposableRuntime();
-	await runtime.runPromise(programToRun);
+	await using runtime = disposableRuntime(env);
+	await runtime.runPromise(program);
 };

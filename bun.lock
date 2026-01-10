@@ -30,13 +30,13 @@
         "@effect/platform": "catalog:effect",
         "@effect/sql": "catalog:effect",
         "@effect/sql-drizzle": "catalog:effect",
-        "drizzle-orm": "catalog:drizzle",
         "effect": "catalog:effect",
         "shared": "workspace:*",
       },
       "devDependencies": {
         "@effect/sql-sqlite-bun": "^0.38.0",
         "@types/bun": "latest",
+        "drizzle-orm": "catalog:drizzle",
       },
       "peerDependencies": {
         "typescript": "^5",
