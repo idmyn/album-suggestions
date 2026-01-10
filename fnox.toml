@@ -1,0 +1,35 @@
+if_missing = "error"
+
+[providers.keychain-unprefixed]
+type = "keychain"
+service = "fnox"
+
+[providers.keychain-shared]
+type = "keychain"
+service = "fnox"
+prefix = "album-suggestions/"
+
+[providers.keychain-staging]
+type = "keychain"
+service = "fnox"
+prefix = "album-suggestions/staging/"
+
+[providers.keychain-production]
+type = "keychain"
+service = "fnox"
+prefix = "album-suggestions/production/"
+
+[secrets]
+CLOUDFLARE_ACCOUNT_ID= { provider = "keychain-unprefixed", value = "CLOUDFLARE_ACCOUNT_ID" }
+CLOUDFLARE_API_TOKEN= { provider = "keychain-unprefixed", value = "CLOUDFLARE_API_TOKEN" }
+OPENROUTER_API_KEY= { provider = "keychain-shared", value = "OPENROUTER_API_KEY" }
+SPOTIFY_CLIENT_ID= { provider = "keychain-shared", value = "SPOTIFY_CLIENT_ID" }
+SPOTIFY_CLIENT_SECRET= { provider = "keychain-shared", value = "SPOTIFY_CLIENT_SECRET" }
+
+[profiles.staging.secrets]
+TURSO_DATABASE_URL= { provider = "keychain-staging", value = "TURSO_DATABASE_URL" }
+TURSO_AUTH_TOKEN= { provider = "keychain-staging", value = "TURSO_AUTH_TOKEN" }
+
+[profiles.production.secrets]
+TURSO_DATABASE_URL= { provider = "keychain-production", value = "TURSO_DATABASE_URL" }
+TURSO_AUTH_TOKEN= { provider = "keychain-production", value = "TURSO_AUTH_TOKEN" }
