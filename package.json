@@ -37,6 +37,7 @@
 	"scripts": {
 		"prepare": "effect-language-service patch",
 		"tsc": "bun --workspaces run tsc",
+		"format": "prettier --write .",
 		"deploy": "bun run deploy.ts"
 	},
 	"dependencies": {

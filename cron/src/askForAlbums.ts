@@ -1,5 +1,8 @@
 import { AiError, LanguageModel } from "@effect/ai";
-import { OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter";
+import {
+	OpenRouterClient,
+	OpenRouterLanguageModel,
+} from "@effect/ai-openrouter";
 import { SqlError } from "@effect/sql";
 import { Context, Effect, Layer, Schema } from "effect";
 import { Database } from "shared";
@@ -37,7 +40,10 @@ export interface AiResponse {
 export class AiService extends Context.Tag("AiService")<
 	AiService,
 	{
-		askForAlbums: () => Effect.Effect<AiResponse, SqlError.SqlError | AiError.AiError>;
+		askForAlbums: () => Effect.Effect<
+			AiResponse,
+			SqlError.SqlError | AiError.AiError
+		>;
 	}
 >() {}
 

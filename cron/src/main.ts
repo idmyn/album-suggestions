@@ -101,8 +101,9 @@ export const program = Effect.gen(function* () {
 					`\nAttempt ${nextAttempt}/${MAX_AI_ATTEMPTS}: Fetching album suggestions...`,
 				);
 
-				const { aiResponseId, totalFound, newAlbums } =
-					yield* runSingleAttempt(state.seenIds);
+				const { aiResponseId, totalFound, newAlbums } = yield* runSingleAttempt(
+					state.seenIds,
+				);
 
 				const uniqueNewAlbums: AlbumWithLinks[] = [];
 				const updatedSeenIds = new Set(state.seenIds);
@@ -142,7 +143,9 @@ export const program = Effect.gen(function* () {
 	});
 
 	if (!finalState.aiResponseId || finalState.accumulatedAlbums.length === 0) {
-		return yield* Effect.fail(new Error("No new albums found after all attempts"));
+		return yield* Effect.fail(
+			new Error("No new albums found after all attempts"),
+		);
 	}
 
 	if (finalState.accumulatedAlbums.length < MIN_NEW_ALBUMS) {

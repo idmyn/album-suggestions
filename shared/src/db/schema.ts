@@ -64,7 +64,9 @@ export const albumSuggestions = sqliteTable(
 			.notNull()
 			.$defaultFn(() => new Date()),
 	},
-	(table) => [uniqueIndex("album_suggestions_album_id_unique").on(table.albumId)],
+	(table) => [
+		uniqueIndex("album_suggestions_album_id_unique").on(table.albumId),
+	],
 );
 
 export const weeklyBatches = sqliteTable("weekly_batches", {

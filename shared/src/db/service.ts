@@ -313,13 +313,15 @@ export const makeDatabaseImpl = (
 		return data.map((row) => row.weekId);
 	}),
 
-	getAllSuggestedAlbumIds: Effect.fn("db.getAllSuggestedAlbumIds")(function* () {
-		const data = yield* db
-			.select({ albumId: schema.albumSuggestions.albumId })
-			.from(schema.albumSuggestions);
+	getAllSuggestedAlbumIds: Effect.fn("db.getAllSuggestedAlbumIds")(
+		function* () {
+			const data = yield* db
+				.select({ albumId: schema.albumSuggestions.albumId })
+				.from(schema.albumSuggestions);
 
-		return data.map((row) => row.albumId);
-	}),
+			return data.map((row) => row.albumId);
+		},
+	),
 });
 
 const LibsqlLive = LibsqlClient.layerConfig({
