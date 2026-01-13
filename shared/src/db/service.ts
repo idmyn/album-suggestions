@@ -324,7 +324,7 @@ export const makeDatabaseImpl = (
 	),
 });
 
-const LibsqlLive = LibsqlClient.layerConfig({
+export const LibsqlLive = LibsqlClient.layerConfig({
 	url: Config.string("TURSO_DATABASE_URL"),
 	authToken: Config.redacted("TURSO_AUTH_TOKEN"),
 });

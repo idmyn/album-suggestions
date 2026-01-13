@@ -1,0 +1,28 @@
+=== Embedding Validation Test ===
+
+1. Fetching an album blurb from DB...
+   Found: "THE BPM"
+   Blurb: "A boundary-pushing mix of R&B, electronic, and violin-driven pop. The album is e..."
+
+2. Calling OpenRouter embeddings API...
+   Model: text-embedding-3-small
+   Dimensions: 1536
+   ✓ Dimension count verified
+
+3. Storing embedding in Turso...
+   ✓ Embedding stored
+
+4. Testing vector search with query "dreamy shoegaze"...
+   Found 1 result(s):
+
+   - THE BPM (distance: 0.6582990884780884)
+     "A boundary-pushing mix of R&B, electronic, and violin-driven..."
+
+   ✓ Test album found in search results
+
+=== Validation Complete ===
+All critical unknowns validated:
+  ✓ OpenRouter embeddings API works
+  ✓ Returns 1536 dimensions
+  ✓ Turso stores F32_BLOB
+  ✓ vector_distance_cos query executes
