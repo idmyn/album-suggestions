@@ -54,11 +54,11 @@ Validated via `cron/src/test-embeddings.ts` — all critical unknowns confirmed 
 
 ## 4. Backfill Script
 
-- [ ] 4.1 Create `cron/src/backfill-embeddings.ts`
+- [x] 4.1 Create `cron/src/backfill-embeddings.ts`
   - Query albums where `blurb_embedding IS NULL`
   - Batch embed (OpenRouter supports array input)
   - Update rows with embeddings
-- [ ] 4.2 Run backfill: `fnox -P staging exec bun run cron/src/backfill-embeddings.ts`
+- [x] 4.2 Run backfill: `fnox -P staging exec bun run cron/src/backfill-embeddings.ts`
 
 ## 5. Search API (website/)
 
