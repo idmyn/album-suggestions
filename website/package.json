@@ -14,6 +14,8 @@
 		"deploy": "bun run build && wrangler deploy"
 	},
 	"dependencies": {
+		"@effect/sql": "^0.49.0",
+		"@effect/sql-libsql": "^0.39.0",
 		"effect": "catalog:effect",
 		"shared": "workspace:*"
 	},

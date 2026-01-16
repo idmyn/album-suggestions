@@ -68,6 +68,8 @@
       "name": "website",
       "version": "0.0.1",
       "dependencies": {
+        "@effect/sql": "^0.49.0",
+        "@effect/sql-libsql": "^0.39.0",
         "effect": "catalog:effect",
         "shared": "workspace:*",
       },

@@ -4,7 +4,7 @@ Validated via `cron/src/test-embeddings.ts` — all critical unknowns confirmed 
 
 ## 1. Schema & Migration
 
-- [ ] 1.1 Define `float32Array` custom type in schema.ts using Drizzle `customType`:
+- [x] 1.1 Define `float32Array` custom type in schema.ts using Drizzle `customType`:
   ```typescript
   const float32Array = customType<{
   	data: number[];
@@ -23,31 +23,31 @@ Validated via `cron/src/test-embeddings.ts` — all critical unknowns confirmed 
   	},
   });
   ```
-- [ ] 1.2 Add `blurbEmbedding` column to `albumSuggestions` table:
+- [x] 1.2 Add `blurbEmbedding` column to `albumSuggestions` table:
   ```typescript
   blurbEmbedding: float32Array("blurb_embedding", { dimensions: 1536 }),
   ```
-- [ ] 1.3 Generate migration: `bun run drizzle-kit generate` (in shared/)
-- [ ] 1.4 Add vector index to migration file (Drizzle doesn't support `libsql_vector_idx` natively):
+- [x] 1.3 Generate migration: `bun run drizzle-kit generate` (in shared/)
+- [x] 1.4 Add vector index to migration file (Drizzle doesn't support `libsql_vector_idx` natively):
   ```sql
   CREATE INDEX album_suggestions_blurb_embedding_idx
     ON album_suggestions(libsql_vector_idx(blurb_embedding));
   ```
-- [ ] 1.5 Apply migration: `fnox -P staging exec bun run drizzle-kit migrate` (in shared/)
+- [x] 1.5 Apply migration: `fnox -P staging exec bun run drizzle-kit migrate` (in shared/)
 
 ## 2. Embedding Service (shared/)
 
-- [ ] 2.1 Create `shared/src/embeddings/service.ts` with Effect-TS service
+- [x] 2.1 Create `shared/src/embeddings/service.ts` with Effect-TS service
   - Reuse patterns from test-embeddings.ts: `HttpClientRequest.bodyJson()` → `Effect.flatMap(client.execute)`
   - Model: `openai/text-embedding-3-small`, 1536 dimensions
   - Export `EmbeddingService` with `generateEmbedding(text: string)` and `generateEmbeddings(texts: string[])`
-- [ ] 2.2 Export from shared/index.ts
+- [x] 2.2 Export from shared/index.ts
 
 ## 3. Cron Integration (cron/)
 
-- [ ] 3.1 Import EmbeddingService into cron/src/main.ts
-- [ ] 3.2 After `db.insertWeeklyBatch()`, generate embeddings for all blurbs in batch
-- [ ] 3.3 Update album_suggestions rows with embeddings via raw SQL:
+- [x] 3.1 Import EmbeddingService into cron/src/main.ts
+- [x] 3.2 After `db.insertWeeklyBatch()`, generate embeddings for all blurbs in batch
+- [x] 3.3 Update album_suggestions rows with embeddings via raw SQL:
   ```sql
   UPDATE album_suggestions SET blurb_embedding = ? WHERE id = ?
   ```
@@ -62,19 +62,19 @@ Validated via `cron/src/test-embeddings.ts` — all critical unknowns confirmed 
 
 ## 5. Search API (website/)
 
-- [ ] 5.1 Create `website/src/routes/api/search/+server.ts`
+- [x] 5.1 Create `website/src/routes/api/search/+server.ts`
   - Accept `?q=` query param
   - Generate query embedding via EmbeddingService
   - Execute: `SELECT ... vector_distance_cos(blurb_embedding, ?) as distance ... ORDER BY distance LIMIT 10`
   - Return JSON: `{ albums: [...], query: string }`
-- [ ] 5.2 Add OPENROUTER_API_KEY to website env
+- [ ] 5.2 Add OPENROUTER_API_KEY to website env (already in fnox.toml shared secrets)
 
 ## 6. Search UI (website/)
 
-- [ ] 6.1 Create `website/src/routes/search/+page.svelte`
+- [x] 6.1 Create `website/src/routes/search/+page.svelte`
   - Text input with debounced search
   - Display album cards (reuse existing component)
-- [ ] 6.2 Add search link to nav
+- [x] 6.2 Add search link to nav
 
 ## 7. Cleanup
 
