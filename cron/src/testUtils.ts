@@ -1,27 +1,58 @@
-import { Database as SQLiteDatabase } from "bun:sqlite";
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
-import { drizzle } from "drizzle-orm/bun-sqlite";
-import { SqliteClient } from "@effect/sql-sqlite-bun";
+import { LibsqlClient } from "@effect/sql-libsql";
 import * as SqliteDrizzle from "@effect/sql-drizzle/Sqlite";
 import { SqlClient } from "@effect/sql";
 import { Effect, Layer } from "effect";
-import { Database, makeDatabaseImpl, nanoid, schema } from "shared";
-import { unlinkSync } from "fs";
+import {
+	Database,
+	makeDatabaseImpl,
+	nanoid,
+	schema,
+	EmbeddingService,
+} from "shared";
+import { unlinkSync, readFileSync, readdirSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { createClient } from "@libsql/client";
+
+const runMigrations = (dbPath: string, migrationsFolder: string) => {
+	const client = createClient({ url: `file:${dbPath}` });
+
+	client.executeMultiple(`
+		CREATE TABLE IF NOT EXISTS __drizzle_migrations (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			hash TEXT NOT NULL,
+			created_at NUMERIC
+		)
+	`);
+
+	const migrationFiles = readdirSync(migrationsFolder)
+		.filter((f) => f.endsWith(".sql"))
+		.sort();
+
+	for (const file of migrationFiles) {
+		const sql = readFileSync(join(migrationsFolder, file), "utf-8");
+		const statements = sql
+			.split("--> statement-breakpoint")
+			.map((s) => s.trim())
+			.filter(Boolean);
+
+		for (const stmt of statements) {
+			client.execute(stmt);
+		}
+	}
+
+	client.close();
+};
 
 const createTestDbLayer = () => {
 	const tempFile = join(tmpdir(), `test-${nanoid()}.db`);
 
-	// Run migrations with drizzle-orm directly
-	const sqlite = new SQLiteDatabase(tempFile);
-	const tempDrizzle = drizzle(sqlite, { schema });
-	migrate(tempDrizzle, {
-		migrationsFolder: import.meta.dir + "/../../shared/drizzle",
-	});
-	sqlite.close();
+	// Run migrations using libsql client (supports F32_BLOB, vector indexes, etc.)
+	runMigrations(tempFile, import.meta.dir + "/../../shared/drizzle");
 
-	return Layer.scoped(
+	const libsqlClientLayer = LibsqlClient.layer({ url: `file:${tempFile}` });
+
+	const databaseLayer = Layer.scoped(
 		Database,
 		Effect.gen(function* () {
 			yield* Effect.addFinalizer(() => Effect.sync(() => unlinkSync(tempFile)));
@@ -29,7 +60,15 @@ const createTestDbLayer = () => {
 			const db = yield* SqliteDrizzle.make({ schema });
 			return makeDatabaseImpl(db, sql);
 		}),
-	).pipe(Layer.provide(SqliteClient.layer({ filename: tempFile })));
+	).pipe(Layer.provide(libsqlClientLayer));
+
+	return Layer.merge(databaseLayer, libsqlClientLayer);
 };
 
 export const DatabaseTestLive = () => createTestDbLayer();
+
+export const EmbeddingServiceTestLive = Layer.succeed(EmbeddingService, {
+	generateEmbedding: () => Effect.succeed(Array(1536).fill(0)),
+	generateEmbeddings: (texts: string[]) =>
+		Effect.succeed(texts.map(() => Array(1536).fill(0))),
+});

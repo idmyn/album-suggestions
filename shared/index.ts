@@ -7,3 +7,8 @@ export {
 	makeDatabaseImpl,
 } from "./src/db/service";
 export { currentSuggestionWeekId, weekIdFromDate } from "./src/time/week";
+export {
+	EmbeddingService,
+	EmbeddingServiceLive,
+	floatArrayToBlob,
+} from "./src/embeddings/service";

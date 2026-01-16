@@ -1,4 +1,8 @@
-import { FetchHttpClient, HttpClient, HttpClientRequest } from "@effect/platform";
+import {
+	FetchHttpClient,
+	HttpClient,
+	HttpClientRequest,
+} from "@effect/platform";
 import { SqlClient } from "@effect/sql";
 import { Config, Console, Effect, Layer, Redacted, Schema } from "effect";
 import { Database, DatabaseLive, LibsqlLive } from "shared";
@@ -93,7 +97,9 @@ const program = Effect.gen(function* () {
 	yield* sql`UPDATE album_suggestions SET blurb_embedding = ${embeddingBlob} WHERE id = ${album.id}`;
 	yield* Console.log("   ✓ Embedding stored\n");
 
-	yield* Console.log('4. Testing vector search with query "dreamy shoegaze"...');
+	yield* Console.log(
+		'4. Testing vector search with query "dreamy shoegaze"...',
+	);
 	const queryResponse = yield* fetchEmbedding("dreamy shoegaze");
 	const queryData = queryResponse.data[0];
 	if (!queryData) {

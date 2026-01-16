@@ -1,5 +1,6 @@
 import { OpenRouterClient } from "@effect/ai-openrouter";
 import { FetchHttpClient } from "@effect/platform";
+import { SqlClient } from "@effect/sql";
 import {
 	Array,
 	Config,
@@ -21,7 +22,15 @@ import {
 	SongLinkServiceLive,
 	type SongLinks,
 } from "./songLink";
-import { Database, DatabaseLive, currentSuggestionWeekId } from "shared";
+import {
+	Database,
+	DatabaseLive,
+	currentSuggestionWeekId,
+	EmbeddingService,
+	EmbeddingServiceLive,
+	floatArrayToBlob,
+	LibsqlLive,
+} from "shared";
 import { HoneycombLayer } from "./otel";
 
 const MIN_NEW_ALBUMS = 5;
@@ -154,28 +163,65 @@ export const program = Effect.gen(function* () {
 		);
 	}
 
+	const weekId = currentSuggestionWeekId();
+	const albumData = finalState.accumulatedAlbums.map((album) => ({
+		id: album.id,
+		name: album.name,
+		releaseDate: album.releaseDate,
+		releaseDatePrecision: album.releaseDatePrecision,
+		appleMusicUrl: album.songLinks.linksByPlatform.appleMusic?.url,
+		tidalUrl: album.songLinks.linksByPlatform.tidal?.url,
+		spotifyUrl: album.spotifyUrl,
+		blurb: album.blurb,
+		artists: Array.fromIterable(album.artists),
+		smallImageUrl: album.images.smallImageUrl,
+		mediumImageUrl: album.images.mediumImageUrl,
+		largeImageUrl: album.images.largeImageUrl,
+	}));
+
 	yield* db.insertWeeklyBatch({
-		weekId: currentSuggestionWeekId(),
+		weekId,
 		aiResponseId: finalState.aiResponseId,
-		albums: finalState.accumulatedAlbums.map((album) => ({
-			id: album.id,
-			name: album.name,
-			releaseDate: album.releaseDate,
-			releaseDatePrecision: album.releaseDatePrecision,
-			appleMusicUrl: album.songLinks.linksByPlatform.appleMusic?.url,
-			tidalUrl: album.songLinks.linksByPlatform.tidal?.url,
-			spotifyUrl: album.spotifyUrl,
-			blurb: album.blurb,
-			artists: Array.fromIterable(album.artists),
-			smallImageUrl: album.images.smallImageUrl,
-			mediumImageUrl: album.images.mediumImageUrl,
-			largeImageUrl: album.images.largeImageUrl,
-		})),
+		albums: albumData,
 	});
 
 	yield* Console.log(
 		`\nProcessed ${finalState.accumulatedAlbums.length} NEW albums successfully across ${finalState.attempt} attempt(s)`,
 	);
+
+	yield* Console.log("\nGenerating embeddings for album blurbs...");
+	const embeddingService = yield* EmbeddingService;
+	const sql = yield* SqlClient.SqlClient;
+
+	const blurbs = albumData.map((a) => a.blurb);
+	const embeddings = yield* embeddingService.generateEmbeddings(blurbs);
+
+	yield* Console.log(
+		`Generated ${embeddings.length} embeddings, updating database...`,
+	);
+
+	const suggestionRows = yield* sql<{ id: string; albumId: string }>`
+		SELECT s.id, s.albumId FROM album_suggestions s
+		JOIN weekly_batches wb ON s.aiResponseId = wb.aiResponseId
+		WHERE wb.weekId = ${weekId}
+	`;
+
+	const albumIdToSuggestionId = new Map<string, string>();
+	for (const row of suggestionRows) {
+		albumIdToSuggestionId.set(row.albumId, row.id);
+	}
+
+	for (let i = 0; i < albumData.length; i++) {
+		const album = albumData[i]!;
+		const embedding = embeddings[i];
+		const suggestionId = albumIdToSuggestionId.get(album.id);
+		if (suggestionId && embedding) {
+			const embeddingBlob = floatArrayToBlob(embedding);
+			yield* sql`UPDATE album_suggestions SET blurb_embedding = ${embeddingBlob} WHERE id = ${suggestionId}`;
+		}
+	}
+
+	yield* Console.log("Embeddings stored successfully.");
 }).pipe(Effect.withSpan("cron.run"));
 
 const OpenRouterLive = OpenRouterClient.layerConfig({
@@ -197,10 +243,12 @@ const SongLinkServiceWithDeps = SongLinkServiceLive.pipe(
 
 const MainLayer = Layer.mergeAll(
 	DatabaseLive,
+	LibsqlLive,
 	HoneycombLayer,
 	AiServiceWithDeps,
 	SpotifyServiceWithDeps,
 	SongLinkServiceWithDeps,
+	EmbeddingServiceLive,
 );
 
 const disposableRuntime = (env?: Env) => {

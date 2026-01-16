@@ -12,7 +12,7 @@ import { AiService, type Album } from "./askForAlbums";
 import { SpotifyService, type SpotifyAlbumWithBlurb } from "./spotify";
 import { SongLinkService, type SongLinks } from "./songLink";
 import { Database, currentSuggestionWeekId } from "shared";
-import { DatabaseTestLive } from "./testUtils";
+import { DatabaseTestLive, EmbeddingServiceTestLive } from "./testUtils";
 
 const makeAlbum = (id: string): Album => ({
 	title: `Album ${id}`,
@@ -101,6 +101,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -180,6 +181,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -263,6 +265,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -365,6 +368,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -436,6 +440,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 

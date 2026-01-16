@@ -5,6 +5,7 @@ Minimal test plan to validate the semantic search approach before full implement
 ## Goal
 
 Test all 3 critical unknowns with a single script:
+
 1. OpenRouter embeddings API works and returns 1536 dimensions
 2. Turso vector storage works with F32_BLOB
 3. `vector_top_k` query returns sensible results
