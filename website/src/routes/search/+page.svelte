@@ -94,7 +94,7 @@
 
 <style>
 	.container {
-		padding: theme(spacing.4);
+		padding: theme(spacing.3);
 		min-height: 100vh;
 		max-width: 50rem;
 		margin: auto;
@@ -110,12 +110,12 @@
 	}
 
 	.search-box {
-		margin-bottom: theme(spacing.6);
+		margin-bottom: theme(spacing.4);
 	}
 
 	.search-input {
 		width: 100%;
-		padding: theme(spacing.3);
+		padding: theme(spacing.2);
 		font-size: 1rem;
 		border: 1px solid black;
 		border-radius: 4px;

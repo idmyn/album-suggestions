@@ -14,6 +14,9 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { createClient } from "@libsql/client";
 
+// Custom migration runner using libsql client instead of Drizzle's native migrate().
+// Drizzle's migrate uses bun:sqlite which doesn't support libsql-specific features
+// like F32_BLOB vector types and libsql_vector_idx indexes.
 const runMigrations = (dbPath: string, migrationsFolder: string) => {
 	const client = createClient({ url: `file:${dbPath}` });
 
