@@ -189,14 +189,22 @@ export const program = Effect.gen(function* () {
 
 	const embeddingService = yield* EmbeddingService;
 	const blurbs = albumData.map((a) => a.blurb);
-	const embeddings = yield* embeddingService.generateEmbeddings(blurbs);
-	const embeddingsWithIds = Array.zip(albumData, embeddings).map(
-		([a, embedding]) => ({
-			albumId: a.id,
-			embedding,
+	yield* embeddingService.generateEmbeddings(blurbs).pipe(
+		Effect.flatMap((embeddings) => {
+			const embeddingsWithIds = Array.zip(albumData, embeddings).map(
+				([a, embedding]) => ({
+					albumId: a.id,
+					embedding,
+				}),
+			);
+			return db.storeEmbeddingsForWeek(weekId, embeddingsWithIds);
 		}),
+		Effect.catchAll((error) =>
+			Console.error(
+				`Failed to generate embeddings, albums saved with NULL embeddings: ${error}`,
+			),
+		),
 	);
-	yield* db.storeEmbeddingsForWeek(weekId, embeddingsWithIds);
 }).pipe(Effect.withSpan("cron.run"));
 
 const OpenRouterLive = OpenRouterClient.layerConfig({
