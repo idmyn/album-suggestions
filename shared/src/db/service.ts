@@ -72,6 +72,21 @@ export class Database extends Context.Tag("Database")<
 		getRecentWeekIds: () => Effect.Effect<string[], SqlError.SqlError>;
 
 		getAllSuggestedAlbumIds: () => Effect.Effect<string[], SqlError.SqlError>;
+
+		searchAlbumsByEmbedding: (embedding: number[]) => Effect.Effect<
+			Array<{
+				id: string;
+				name: string;
+				blurb: string;
+				spotifyUrl: string;
+				appleMusicUrl: string | null;
+				tidalUrl: string | null;
+				mediumImageUrl: string;
+				artists: { name: string }[];
+				distance: number;
+			}>,
+			SqlError.SqlError
+		>;
 	}
 >() {}
 
@@ -320,6 +335,55 @@ export const makeDatabaseImpl = (
 				.from(schema.albumSuggestions);
 
 			return data.map((row) => row.albumId);
+		},
+	),
+
+	searchAlbumsByEmbedding: Effect.fn("db.searchAlbumsByEmbedding")(
+		function* (embedding: number[]) {
+			const rows = yield* sql<{
+				id: string;
+				name: string;
+				blurb: string;
+				spotifyUrl: string;
+				appleMusicUrl: string | null;
+				tidalUrl: string | null;
+				mediumImageUrl: string;
+				artistNames: string;
+				distance: number;
+			}>`
+				SELECT
+					a.spotifyId as id,
+					a.name,
+					s.blurb,
+					a.spotifyUrl,
+					a.appleMusicUrl,
+					a.tidalUrl,
+					a.mediumImageUrl,
+					GROUP_CONCAT(ar.name, ', ') as artistNames,
+					vector_distance_cos(s.blurb_embedding, vector32(${JSON.stringify(embedding)})) as distance
+				FROM album_suggestions s
+				JOIN albums a ON s.albumId = a.spotifyId
+				LEFT JOIN album_artists aa ON a.spotifyId = aa.albumId
+				LEFT JOIN artists ar ON aa.artistId = ar.spotifyId
+				WHERE s.blurb_embedding IS NOT NULL
+				GROUP BY a.spotifyId
+				ORDER BY distance ASC
+				LIMIT 10
+			`;
+
+			return rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				blurb: row.blurb,
+				spotifyUrl: row.spotifyUrl,
+				appleMusicUrl: row.appleMusicUrl,
+				tidalUrl: row.tidalUrl,
+				mediumImageUrl: row.mediumImageUrl,
+				artists: row.artistNames
+					? row.artistNames.split(", ").map((name) => ({ name }))
+					: [],
+				distance: row.distance,
+			}));
 		},
 	),
 });
