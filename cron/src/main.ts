@@ -1,6 +1,5 @@
 import { OpenRouterClient } from "@effect/ai-openrouter";
 import { FetchHttpClient } from "@effect/platform";
-import { SqlClient } from "@effect/sql";
 import {
 	Array,
 	Config,
@@ -26,9 +25,7 @@ import {
 	Database,
 	DatabaseLive,
 	currentSuggestionWeekId,
-	EmbeddingService,
 	EmbeddingServiceLive,
-	floatArrayToBlob,
 	LibsqlLive,
 } from "shared";
 import { HoneycombLayer } from "./otel";
@@ -189,39 +186,10 @@ export const program = Effect.gen(function* () {
 		`\nProcessed ${finalState.accumulatedAlbums.length} NEW albums successfully across ${finalState.attempt} attempt(s)`,
 	);
 
-	yield* Console.log("\nGenerating embeddings for album blurbs...");
-	const embeddingService = yield* EmbeddingService;
-	const sql = yield* SqlClient.SqlClient;
-
-	const blurbs = albumData.map((a) => a.blurb);
-	const embeddings = yield* embeddingService.generateEmbeddings(blurbs);
-
-	yield* Console.log(
-		`Generated ${embeddings.length} embeddings, updating database...`,
+	yield* db.storeEmbeddingsForWeek(
+		weekId,
+		albumData.map((a) => ({ id: a.id, blurb: a.blurb })),
 	);
-
-	const suggestionRows = yield* sql<{ id: string; albumId: string }>`
-		SELECT s.id, s.albumId FROM album_suggestions s
-		JOIN weekly_batches wb ON s.aiResponseId = wb.aiResponseId
-		WHERE wb.weekId = ${weekId}
-	`;
-
-	const albumIdToSuggestionId = new Map<string, string>();
-	for (const row of suggestionRows) {
-		albumIdToSuggestionId.set(row.albumId, row.id);
-	}
-
-	for (let i = 0; i < albumData.length; i++) {
-		const album = albumData[i]!;
-		const embedding = embeddings[i];
-		const suggestionId = albumIdToSuggestionId.get(album.id);
-		if (suggestionId && embedding) {
-			const embeddingBlob = floatArrayToBlob(embedding);
-			yield* sql`UPDATE album_suggestions SET blurb_embedding = ${embeddingBlob} WHERE id = ${suggestionId}`;
-		}
-	}
-
-	yield* Console.log("Embeddings stored successfully.");
 }).pipe(Effect.withSpan("cron.run"));
 
 const OpenRouterLive = OpenRouterClient.layerConfig({

@@ -6,6 +6,7 @@ import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import { desc, eq, asc } from "drizzle-orm";
 import * as schema from "./schema";
 import { nanoid } from "./utils";
+import { EmbeddingService, floatArrayToBlob } from "../embeddings/service";
 
 type DrizzleDb = SqliteRemoteDatabase<typeof schema>;
 
@@ -87,6 +88,11 @@ export class Database extends Context.Tag("Database")<
 			}>,
 			SqlError.SqlError
 		>;
+
+		storeEmbeddingsForWeek: (
+			weekId: string,
+			albums: Array<{ id: string; blurb: string }>,
+		) => Effect.Effect<void, SqlError.SqlError | Error, EmbeddingService>;
 	}
 >() {}
 
@@ -386,6 +392,39 @@ export const makeDatabaseImpl = (
 			}));
 		},
 	),
+
+	storeEmbeddingsForWeek: Effect.fn("db.storeEmbeddingsForWeek")(function* (
+		weekId: string,
+		albums: Array<{ id: string; blurb: string }>,
+	) {
+		if (albums.length === 0) return;
+
+		const embeddingService = yield* EmbeddingService;
+
+		const blurbs = albums.map((a) => a.blurb);
+		const embeddings = yield* embeddingService.generateEmbeddings(blurbs);
+
+		const suggestionRows = yield* sql<{ id: string; albumId: string }>`
+			SELECT s.id, s.albumId FROM album_suggestions s
+			JOIN weekly_batches wb ON s.aiResponseId = wb.aiResponseId
+			WHERE wb.weekId = ${weekId}
+		`;
+
+		const albumIdToSuggestionId = new Map<string, string>();
+		for (const row of suggestionRows) {
+			albumIdToSuggestionId.set(row.albumId, row.id);
+		}
+
+		for (let i = 0; i < albums.length; i++) {
+			const album = albums[i]!;
+			const embedding = embeddings[i];
+			const suggestionId = albumIdToSuggestionId.get(album.id);
+			if (suggestionId && embedding) {
+				const embeddingBlob = floatArrayToBlob(embedding);
+				yield* sql`UPDATE album_suggestions SET blurb_embedding = ${embeddingBlob} WHERE id = ${suggestionId}`;
+			}
+		}
+	}),
 });
 
 export const LibsqlLive = LibsqlClient.layerConfig({
