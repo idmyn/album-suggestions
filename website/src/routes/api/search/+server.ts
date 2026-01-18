@@ -6,7 +6,7 @@ import {
 	EmbeddingService,
 	EmbeddingServiceLive,
 } from "shared";
-import { Effect, Layer } from "effect";
+import { Cause, Effect, Exit, Layer } from "effect";
 
 const SearchLayer = Layer.merge(EmbeddingServiceLive, DatabaseLive);
 
@@ -19,7 +19,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	const trimmedQuery = query.trim();
 
-	const result = await Effect.gen(function* () {
+	const exit = await Effect.gen(function* () {
 		const embeddingService = yield* EmbeddingService;
 		const db = yield* Database;
 
@@ -29,7 +29,12 @@ export const GET: RequestHandler = async ({ url }) => {
 		const albums = yield* db.searchAlbumsByEmbedding(queryEmbedding);
 
 		return { albums, query: trimmedQuery };
-	}).pipe(Effect.provide(SearchLayer), Effect.runPromise);
+	}).pipe(Effect.provide(SearchLayer), Effect.runPromiseExit);
 
-	return json(result);
+	if (Exit.isFailure(exit)) {
+		console.error("Search failed:", Cause.pretty(exit.cause));
+		return json({ error: "Search failed" }, { status: 500 });
+	}
+
+	return json(exit.value);
 };

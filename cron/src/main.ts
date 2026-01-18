@@ -25,6 +25,7 @@ import {
 	Database,
 	DatabaseLive,
 	currentSuggestionWeekId,
+	EmbeddingService,
 	EmbeddingServiceLive,
 	LibsqlLive,
 } from "shared";
@@ -186,10 +187,16 @@ export const program = Effect.gen(function* () {
 		`\nProcessed ${finalState.accumulatedAlbums.length} NEW albums successfully across ${finalState.attempt} attempt(s)`,
 	);
 
-	yield* db.storeEmbeddingsForWeek(
-		weekId,
-		albumData.map((a) => ({ id: a.id, blurb: a.blurb })),
+	const embeddingService = yield* EmbeddingService;
+	const blurbs = albumData.map((a) => a.blurb);
+	const embeddings = yield* embeddingService.generateEmbeddings(blurbs);
+	const embeddingsWithIds = Array.zip(albumData, embeddings).map(
+		([a, embedding]) => ({
+			albumId: a.id,
+			embedding,
+		}),
 	);
+	yield* db.storeEmbeddingsForWeek(weekId, embeddingsWithIds);
 }).pipe(Effect.withSpan("cron.run"));
 
 const OpenRouterLive = OpenRouterClient.layerConfig({
