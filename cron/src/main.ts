@@ -21,7 +21,14 @@ import {
 	SongLinkServiceLive,
 	type SongLinks,
 } from "./songLink";
-import { Database, DatabaseLive, currentSuggestionWeekId } from "shared";
+import {
+	Database,
+	DatabaseLive,
+	currentSuggestionWeekId,
+	EmbeddingService,
+	EmbeddingServiceLive,
+	LibsqlLive,
+} from "shared";
 import { HoneycombLayer } from "./otel";
 
 const MIN_NEW_ALBUMS = 5;
@@ -154,27 +161,49 @@ export const program = Effect.gen(function* () {
 		);
 	}
 
+	const weekId = currentSuggestionWeekId();
+	const albumData = finalState.accumulatedAlbums.map((album) => ({
+		id: album.id,
+		name: album.name,
+		releaseDate: album.releaseDate,
+		releaseDatePrecision: album.releaseDatePrecision,
+		appleMusicUrl: album.songLinks.linksByPlatform.appleMusic?.url,
+		tidalUrl: album.songLinks.linksByPlatform.tidal?.url,
+		spotifyUrl: album.spotifyUrl,
+		blurb: album.blurb,
+		artists: Array.fromIterable(album.artists),
+		smallImageUrl: album.images.smallImageUrl,
+		mediumImageUrl: album.images.mediumImageUrl,
+		largeImageUrl: album.images.largeImageUrl,
+	}));
+
 	yield* db.insertWeeklyBatch({
-		weekId: currentSuggestionWeekId(),
+		weekId,
 		aiResponseId: finalState.aiResponseId,
-		albums: finalState.accumulatedAlbums.map((album) => ({
-			id: album.id,
-			name: album.name,
-			releaseDate: album.releaseDate,
-			releaseDatePrecision: album.releaseDatePrecision,
-			appleMusicUrl: album.songLinks.linksByPlatform.appleMusic?.url,
-			tidalUrl: album.songLinks.linksByPlatform.tidal?.url,
-			spotifyUrl: album.spotifyUrl,
-			blurb: album.blurb,
-			artists: Array.fromIterable(album.artists),
-			smallImageUrl: album.images.smallImageUrl,
-			mediumImageUrl: album.images.mediumImageUrl,
-			largeImageUrl: album.images.largeImageUrl,
-		})),
+		albums: albumData,
 	});
 
 	yield* Console.log(
 		`\nProcessed ${finalState.accumulatedAlbums.length} NEW albums successfully across ${finalState.attempt} attempt(s)`,
+	);
+
+	const embeddingService = yield* EmbeddingService;
+	const blurbs = albumData.map((a) => a.blurb);
+	yield* embeddingService.generateEmbeddings(blurbs).pipe(
+		Effect.flatMap((embeddings) => {
+			const embeddingsWithIds = Array.zip(albumData, embeddings).map(
+				([a, embedding]) => ({
+					albumId: a.id,
+					embedding,
+				}),
+			);
+			return db.storeEmbeddingsForWeek(weekId, embeddingsWithIds);
+		}),
+		Effect.catchAll((error) =>
+			Console.error(
+				`Failed to generate embeddings, albums saved with NULL embeddings: ${error}`,
+			),
+		),
 	);
 }).pipe(Effect.withSpan("cron.run"));
 
@@ -197,10 +226,12 @@ const SongLinkServiceWithDeps = SongLinkServiceLive.pipe(
 
 const MainLayer = Layer.mergeAll(
 	DatabaseLive,
+	LibsqlLive,
 	HoneycombLayer,
 	AiServiceWithDeps,
 	SpotifyServiceWithDeps,
 	SongLinkServiceWithDeps,
+	EmbeddingServiceLive,
 );
 
 const disposableRuntime = (env?: Env) => {

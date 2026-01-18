@@ -8,7 +8,10 @@
 <div class="mobile-container">
 	<Header>
 		<div class="week-id">{data.weekId}</div>
-		<a href="/about" class="about-link">about</a>
+		<div class="header-links">
+			<a href="/search" class="header-link">search</a>
+			<a href="/about" class="header-link">about</a>
+		</div>
 	</Header>
 
 	{#if data.neighbors.previousWeekId || data.neighbors.nextWeekId}
@@ -59,7 +62,12 @@
 		font-weight: 500;
 	}
 
-	.about-link {
+	.header-links {
+		display: flex;
+		gap: theme(spacing.4);
+	}
+
+	.header-link {
 		text-decoration: underline;
 	}
 

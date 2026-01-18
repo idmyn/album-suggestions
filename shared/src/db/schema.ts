@@ -4,8 +4,26 @@ import {
 	integer,
 	primaryKey,
 	uniqueIndex,
+	customType,
 } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
+
+const float32Array = customType<{
+	data: number[];
+	config: { dimensions: number };
+	configRequired: true;
+	driverData: Buffer;
+}>({
+	dataType(config) {
+		return `F32_BLOB(${config.dimensions})`;
+	},
+	fromDriver(value: Buffer) {
+		return Array.from(new Float32Array(value.buffer));
+	},
+	toDriver(value: number[]) {
+		return sql`vector32(${JSON.stringify(value)})`;
+	},
+});
 
 export const aiResponses = sqliteTable("ai_responses", {
 	id: text().primaryKey(),
@@ -60,6 +78,7 @@ export const albumSuggestions = sqliteTable(
 			.notNull()
 			.references(() => albums.spotifyId),
 		blurb: text().notNull(),
+		blurbEmbedding: float32Array("blurb_embedding", { dimensions: 1536 }),
 		createdAt: integer({ mode: "timestamp" })
 			.notNull()
 			.$defaultFn(() => new Date()),

@@ -15,6 +15,13 @@
       "when": 1766239184879,
       "tag": "0001_gorgeous_gateway",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1768589395487,
+      "tag": "0002_strange_medusa",
+      "breakpoints": true
     }
   ]
 }

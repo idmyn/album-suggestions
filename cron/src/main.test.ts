@@ -11,8 +11,8 @@ import { program } from "./main";
 import { AiService, type Album } from "./askForAlbums";
 import { SpotifyService, type SpotifyAlbumWithBlurb } from "./spotify";
 import { SongLinkService, type SongLinks } from "./songLink";
-import { Database, currentSuggestionWeekId } from "shared";
-import { DatabaseTestLive } from "./testUtils";
+import { Database, currentSuggestionWeekId, EmbeddingService } from "shared";
+import { DatabaseTestLive, EmbeddingServiceTestLive } from "./testUtils";
 
 const makeAlbum = (id: string): Album => ({
 	title: `Album ${id}`,
@@ -101,6 +101,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -180,6 +181,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -263,6 +265,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -365,6 +368,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -436,6 +440,7 @@ describe("cron program", () => {
 			TestAiService.pipe(Layer.provide(dbLayer)),
 			TestSpotifyService,
 			TestSongLinkService,
+			EmbeddingServiceTestLive,
 			dbLayer,
 		);
 
@@ -475,5 +480,73 @@ describe("cron program", () => {
 		expect(runtime.runPromise(program)).rejects.toThrow(
 			"No new albums found after all attempts",
 		);
+	});
+
+	test("should insert albums with NULL embeddings when embedding generation fails", async () => {
+		const albumIds = ["a1", "a2", "a3", "a4", "a5"];
+		const albums = albumIds.map(makeAlbum);
+		const spotifyAlbums = albumIds.map(makeSpotifyAlbum);
+
+		const TestAiService = Layer.effect(
+			AiService,
+			Effect.gen(function* () {
+				const db = yield* Database;
+				return {
+					askForAlbums: () =>
+						Effect.gen(function* () {
+							const aiResponseId = yield* db.insertAiResponse({
+								prompt: "test prompt",
+								outputSchema: "test schema",
+								model: "test-model",
+								output: JSON.stringify({ albums }),
+							});
+							return { aiResponseId, albums };
+						}),
+				};
+			}),
+		);
+
+		const TestSpotifyService = Layer.succeed(SpotifyService, {
+			searchForAlbums: () =>
+				Effect.succeed(Stream.fromIterable(spotifyAlbums.map(Option.some))),
+		});
+
+		const TestSongLinkService = Layer.succeed(SongLinkService, {
+			getLinks: (url: string) => {
+				const id = url.split("/").pop()!;
+				return Effect.succeed(makeSongLinks(id));
+			},
+		});
+
+		const FailingEmbeddingService = Layer.succeed(EmbeddingService, {
+			generateEmbedding: () => Effect.fail(new Error("Embedding API unavailable")),
+			generateEmbeddings: () => Effect.fail(new Error("Embedding API unavailable")),
+		});
+
+		const dbLayer = DatabaseTestLive();
+		const TestLayer = Layer.mergeAll(
+			TestAiService.pipe(Layer.provide(dbLayer)),
+			TestSpotifyService,
+			TestSongLinkService,
+			FailingEmbeddingService,
+			dbLayer,
+		);
+
+		await using runtime = makeDisposableRuntime(TestLayer);
+
+		await runtime.runPromise(program);
+
+		const result = await runtime.runPromise(
+			Effect.gen(function* () {
+				const db = yield* Database;
+				return yield* db.getLatestAlbumSuggestions();
+			}),
+		);
+
+		expect(Option.isSome(result)).toBe(true);
+		if (Option.isSome(result)) {
+			expect(result.value.albums).toHaveLength(5);
+			expect(result.value.albums.map((a) => a.id).sort()).toEqual(albumIds.sort());
+		}
 	});
 });

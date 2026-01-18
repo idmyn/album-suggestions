@@ -6,6 +6,7 @@ import type { SqliteRemoteDatabase } from "drizzle-orm/sqlite-proxy";
 import { desc, eq, asc } from "drizzle-orm";
 import * as schema from "./schema";
 import { nanoid } from "./utils";
+import { floatArrayToBlob } from "../embeddings/service";
 
 type DrizzleDb = SqliteRemoteDatabase<typeof schema>;
 
@@ -72,6 +73,26 @@ export class Database extends Context.Tag("Database")<
 		getRecentWeekIds: () => Effect.Effect<string[], SqlError.SqlError>;
 
 		getAllSuggestedAlbumIds: () => Effect.Effect<string[], SqlError.SqlError>;
+
+		searchAlbumsByEmbedding: (embedding: number[]) => Effect.Effect<
+			Array<{
+				id: string;
+				name: string;
+				blurb: string;
+				spotifyUrl: string;
+				appleMusicUrl: string | null;
+				tidalUrl: string | null;
+				mediumImageUrl: string;
+				artists: { name: string }[];
+				distance: number;
+			}>,
+			SqlError.SqlError
+		>;
+
+		storeEmbeddingsForWeek: (
+			weekId: string,
+			embeddings: Array<{ albumId: string; embedding: number[] }>,
+		) => Effect.Effect<void, SqlError.SqlError>;
 	}
 >() {}
 
@@ -322,9 +343,84 @@ export const makeDatabaseImpl = (
 			return data.map((row) => row.albumId);
 		},
 	),
+
+	searchAlbumsByEmbedding: Effect.fn("db.searchAlbumsByEmbedding")(
+		function* (embedding: number[]) {
+			const rows = yield* sql<{
+				id: string;
+				name: string;
+				blurb: string;
+				spotifyUrl: string;
+				appleMusicUrl: string | null;
+				tidalUrl: string | null;
+				mediumImageUrl: string;
+				artistNames: string;
+				distance: number;
+			}>`
+				SELECT
+					a.spotifyId as id,
+					a.name,
+					s.blurb,
+					a.spotifyUrl,
+					a.appleMusicUrl,
+					a.tidalUrl,
+					a.mediumImageUrl,
+					GROUP_CONCAT(ar.name, ', ') as artistNames,
+					vector_distance_cos(s.blurb_embedding, vector32(${JSON.stringify(embedding)})) as distance
+				FROM album_suggestions s
+				JOIN albums a ON s.albumId = a.spotifyId
+				LEFT JOIN album_artists aa ON a.spotifyId = aa.albumId
+				LEFT JOIN artists ar ON aa.artistId = ar.spotifyId
+				WHERE s.blurb_embedding IS NOT NULL
+				GROUP BY a.spotifyId
+				ORDER BY distance ASC
+				LIMIT 10
+			`;
+
+			return rows.map((row) => ({
+				id: row.id,
+				name: row.name,
+				blurb: row.blurb,
+				spotifyUrl: row.spotifyUrl,
+				appleMusicUrl: row.appleMusicUrl,
+				tidalUrl: row.tidalUrl,
+				mediumImageUrl: row.mediumImageUrl,
+				artists: row.artistNames
+					? row.artistNames.split(", ").map((name) => ({ name }))
+					: [],
+				distance: row.distance,
+			}));
+		},
+	),
+
+	storeEmbeddingsForWeek: Effect.fn("db.storeEmbeddingsForWeek")(function* (
+		weekId: string,
+		embeddings: Array<{ albumId: string; embedding: number[] }>,
+	) {
+		if (embeddings.length === 0) return;
+
+		const suggestionRows = yield* sql<{ id: string; albumId: string }>`
+			SELECT s.id, s.albumId FROM album_suggestions s
+			JOIN weekly_batches wb ON s.aiResponseId = wb.aiResponseId
+			WHERE wb.weekId = ${weekId}
+		`;
+
+		const albumIdToSuggestionId = new Map<string, string>();
+		for (const row of suggestionRows) {
+			albumIdToSuggestionId.set(row.albumId, row.id);
+		}
+
+		for (const { albumId, embedding } of embeddings) {
+			const suggestionId = albumIdToSuggestionId.get(albumId);
+			if (suggestionId) {
+				const embeddingBlob = floatArrayToBlob(embedding);
+				yield* sql`UPDATE album_suggestions SET blurb_embedding = ${embeddingBlob} WHERE id = ${suggestionId}`;
+			}
+		}
+	}),
 });
 
-const LibsqlLive = LibsqlClient.layerConfig({
+export const LibsqlLive = LibsqlClient.layerConfig({
 	url: Config.string("TURSO_DATABASE_URL"),
 	authToken: Config.redacted("TURSO_AUTH_TOKEN"),
 });
