@@ -11,11 +11,11 @@ const PlatformLink = Schema.Struct({
 	url: Schema.String,
 	nativeAppUriMobile: Schema.optional(Schema.String),
 	nativeAppUriDesktop: Schema.optional(Schema.String),
-	entityUniqueId: Schema.String,
+	entityUniqueId: Schema.optional(Schema.String),
 });
 
 const SongLinkResponse = Schema.Struct({
-	entityUniqueId: Schema.String,
+	entityUniqueId: Schema.optional(Schema.String),
 	userCountry: Schema.String,
 	pageUrl: Schema.String,
 	linksByPlatform: Schema.Struct({
