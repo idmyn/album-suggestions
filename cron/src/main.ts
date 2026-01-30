@@ -1,5 +1,5 @@
 import { OpenRouterClient } from "@effect/ai-openrouter";
-import { FetchHttpClient } from "@effect/platform";
+
 import {
 	Array,
 	Config,
@@ -29,7 +29,7 @@ import {
 	EmbeddingServiceLive,
 	LibsqlLive,
 } from "shared";
-import { HoneycombLayer } from "./otel";
+import { CloudflareHttpClientLive, HoneycombLayer } from "./otel";
 
 const MIN_NEW_ALBUMS = 5;
 const MAX_AI_ATTEMPTS = 3;
@@ -209,19 +209,11 @@ export const program = Effect.gen(function* () {
 
 const OpenRouterLive = OpenRouterClient.layerConfig({
 	apiKey: Config.redacted("OPENROUTER_API_KEY"),
-}).pipe(Layer.provide(FetchHttpClient.layer));
+});
 
 const AiServiceWithDeps = AiServiceLive.pipe(
 	Layer.provide(DatabaseLive),
 	Layer.provide(OpenRouterLive),
-);
-
-const SpotifyServiceWithDeps = SpotifyServiceLive.pipe(
-	Layer.provide(FetchHttpClient.layer),
-);
-
-const SongLinkServiceWithDeps = SongLinkServiceLive.pipe(
-	Layer.provide(FetchHttpClient.layer),
 );
 
 const MainLayer = Layer.mergeAll(
@@ -229,12 +221,12 @@ const MainLayer = Layer.mergeAll(
 	LibsqlLive,
 	HoneycombLayer,
 	AiServiceWithDeps,
-	SpotifyServiceWithDeps,
-	SongLinkServiceWithDeps,
+	SpotifyServiceLive,
+	SongLinkServiceLive,
 	EmbeddingServiceLive,
-);
+).pipe(Layer.provide(CloudflareHttpClientLive));
 
-const disposableRuntime = (env?: Env) => {
+const disposableRuntime = (env?: Env, ctx?: ExecutionContext) => {
 	const configLayer = env
 		? Layer.setConfigProvider(ConfigProvider.fromJson(env))
 		: Layer.empty;
@@ -243,11 +235,18 @@ const disposableRuntime = (env?: Env) => {
 
 	const runtime = ManagedRuntime.make(MainLayerWithConfig);
 	return Object.assign(runtime, {
-		[Symbol.asyncDispose]: () => runtime.dispose(),
+		[Symbol.asyncDispose]: () => {
+			const dispose = runtime.dispose();
+			if (ctx) {
+				ctx.waitUntil(dispose);
+				return Promise.resolve();
+			}
+			return dispose;
+		},
 	});
 };
 
-export const run = async (env?: Env): Promise<void> => {
-	await using runtime = disposableRuntime(env);
+export const run = async (env?: Env, ctx?: ExecutionContext): Promise<void> => {
+	await using runtime = disposableRuntime(env, ctx);
 	await runtime.runPromise(program);
 };

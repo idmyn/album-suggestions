@@ -46,6 +46,8 @@ const CloudflareHttpClientLive = Layer.effect(
 	}),
 ).pipe(Layer.provide(FetchHttpClient.layer));
 
+export { CloudflareHttpClientLive };
+
 export const HoneycombLayer = Layer.unwrapEffect(
 	Effect.gen(function* () {
 		const enabled = yield* OtelEnabled;
@@ -60,6 +62,6 @@ export const HoneycombLayer = Layer.unwrapEffect(
 			maxBatchSize: 512,
 			tracerExportInterval: Duration.millis(2000),
 			shutdownTimeout: Duration.seconds(3),
-		}).pipe(Layer.provide(CloudflareHttpClientLive));
+		});
 	}),
 );
