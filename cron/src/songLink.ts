@@ -16,7 +16,7 @@ const PlatformLink = Schema.Struct({
 
 const SongLinkResponse = Schema.Struct({
 	entityUniqueId: Schema.optional(Schema.String),
-	userCountry: Schema.String,
+	userCountry: Schema.optional(Schema.String),
 	pageUrl: Schema.String,
 	linksByPlatform: Schema.Struct({
 		appleMusic: Schema.optional(PlatformLink),
