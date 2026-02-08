@@ -6,6 +6,7 @@ import {
 	Effect,
 	Layer,
 	Redacted,
+	Schedule,
 	Schema,
 	Option,
 	Stream,
@@ -134,6 +135,11 @@ export class SpotifyService extends Context.Tag("SpotifyService")<
 	}
 >() {}
 
+const retryTransient = Schedule.exponential("500 millis").pipe(
+	Schedule.jittered,
+	Schedule.intersect(Schedule.recurs(3)),
+);
+
 export const SpotifyServiceLive = Layer.effect(
 	SpotifyService,
 	Effect.gen(function* () {
@@ -154,6 +160,7 @@ export const SpotifyServiceLive = Layer.effect(
 					}),
 					client.execute,
 					Effect.flatMap((res) => res.json),
+					Effect.retry(retryTransient),
 				);
 
 				const response = yield* Schema.decodeUnknown(TokenResponse)(json);
@@ -176,6 +183,7 @@ export const SpotifyServiceLive = Layer.effect(
 				HttpClientRequest.bearerToken(accessToken),
 				client.execute,
 				Effect.flatMap((res) => res.json),
+				Effect.retry(retryTransient),
 			);
 
 			const response = yield* Schema.decodeUnknown(SpotifySearchResponse)(json);

@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect";
+import { Context, Effect, Layer, Schedule, Schema } from "effect";
 import {
 	HttpClient,
 	HttpClientRequest,
@@ -36,6 +36,11 @@ export class SongLinkService extends Context.Tag("SongLinkService")<
 	}
 >() {}
 
+const retryTransient = Schedule.exponential("500 millis").pipe(
+	Schedule.jittered,
+	Schedule.intersect(Schedule.recurs(3)),
+);
+
 export const SongLinkServiceLive = Layer.effect(
 	SongLinkService,
 	Effect.gen(function* () {
@@ -49,6 +54,7 @@ export const SongLinkServiceLive = Layer.effect(
 					HttpClientRequest.setUrlParam("url", url),
 					client.execute,
 					Effect.flatMap((res) => res.json),
+					Effect.retry(retryTransient),
 				);
 
 				return yield* Schema.decodeUnknown(SongLinkResponse)(json);
