@@ -29,7 +29,8 @@ import {
 	EmbeddingServiceLive,
 	LibsqlLive,
 } from "shared";
-import { CloudflareHttpClientLive, HoneycombLayer } from "./otel";
+import { FetchHttpClient } from "@effect/platform";
+import { HoneycombLayer } from "./otel";
 
 const MIN_NEW_ALBUMS = 5;
 const MAX_AI_ATTEMPTS = 3;
@@ -224,7 +225,7 @@ const MainLayer = Layer.mergeAll(
 	SpotifyServiceLive,
 	SongLinkServiceLive,
 	EmbeddingServiceLive,
-).pipe(Layer.provide(CloudflareHttpClientLive));
+).pipe(Layer.provide(FetchHttpClient.layer));
 
 const disposableRuntime = (env?: Env, ctx?: ExecutionContext) => {
 	const configLayer = env
