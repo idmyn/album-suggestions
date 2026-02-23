@@ -25,7 +25,7 @@
 	"scripts": {
 		"test": "bun test",
 		"tsc": "tsc --noEmit",
-		"dev": "bun run dev.ts",
+		"dev": "bun run scripts/run.ts",
 		"deploy": "wrangler deploy"
 	}
 }
