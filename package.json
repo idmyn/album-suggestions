@@ -41,7 +41,8 @@
 		"deploy": "bun run deploy.ts",
 		"build": "bun run --cwd website build",
 		"start:website": "bun run website/build/index.js",
-		"start:cron": "bun run cron/scripts/run.ts"
+		"start:cron": "bun run cron/scripts/run.ts",
+		"db:migrate": "bun run --cwd shared db:migrate"
 	},
 	"dependencies": {
 		"@effect/opentelemetry": "^0.58.0",
