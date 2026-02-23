@@ -8,7 +8,7 @@
 	},
 	"triggers": {
 		"crons": [
-			"0 0 * * FRI", // 00:00 on Friday
+			//"0 0 * * FRI", // 00:00 on Friday
 			//"*/2 * * * *",
 		],
 	},
