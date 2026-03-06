@@ -7,7 +7,7 @@ import {
 import { ParseError } from "effect/ParseResult";
 
 const PlatformLink = Schema.Struct({
-	country: Schema.String,
+	country: Schema.optional(Schema.String),
 	url: Schema.String,
 	nativeAppUriMobile: Schema.optional(Schema.String),
 	nativeAppUriDesktop: Schema.optional(Schema.String),
@@ -17,7 +17,7 @@ const PlatformLink = Schema.Struct({
 const SongLinkResponse = Schema.Struct({
 	entityUniqueId: Schema.optional(Schema.String),
 	userCountry: Schema.optional(Schema.String),
-	pageUrl: Schema.String,
+	pageUrl: Schema.optional(Schema.String),
 	linksByPlatform: Schema.Struct({
 		appleMusic: Schema.optional(PlatformLink),
 		tidal: Schema.optional(PlatformLink),
