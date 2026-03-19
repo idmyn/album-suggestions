@@ -143,7 +143,7 @@ const retryTransient = Schedule.exponential("500 millis").pipe(
 export const SpotifyServiceLive = Layer.effect(
 	SpotifyService,
 	Effect.gen(function* () {
-		const client = yield* HttpClient.HttpClient;
+		const client = HttpClient.filterStatusOk(yield* HttpClient.HttpClient);
 
 		const fetchAccessToken = Effect.fn("spotify.fetchAccessToken")(
 			function* () {
@@ -182,6 +182,13 @@ export const SpotifyServiceLive = Layer.effect(
 				HttpClientRequest.setUrlParam("type", "album"),
 				HttpClientRequest.bearerToken(accessToken),
 				client.execute,
+				Effect.tapErrorTag("ResponseError", (err) =>
+					err.response.text.pipe(
+						Effect.flatMap((body) =>
+							Console.error(`Spotify response body: ${body}`),
+						),
+					),
+				),
 				Effect.flatMap((res) => res.json),
 				Effect.retry(retryTransient),
 			);

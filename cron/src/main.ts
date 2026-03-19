@@ -66,9 +66,17 @@ const runSingleAttempt = (alreadySuggestedIds: Set<string>) =>
 							albumWithBlurb.spotifyUrl,
 						);
 						return { ...albumWithBlurb, songLinks };
-					}),
+					}).pipe(
+						Effect.tapError((e) =>
+							Console.warn(
+								`⚠️  SongLink lookup failed for "${albumWithBlurb.name}", skipping: ${e._tag}`,
+							),
+						),
+						Effect.option,
+					),
 				{ concurrency: 10 },
 			),
+			Stream.filterMap((option) => option),
 			Stream.runCollect,
 		);
 
