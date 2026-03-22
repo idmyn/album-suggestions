@@ -27,12 +27,14 @@ const SongLinkResponse = Schema.Struct({
 
 export type SongLinks = Schema.Schema.Type<typeof SongLinkResponse>;
 
+const emptySongLinks: SongLinks = { linksByPlatform: {} };
+
 export class SongLinkService extends Context.Tag("SongLinkService")<
 	SongLinkService,
 	{
 		getLinks: (
 			url: string,
-		) => Effect.Effect<SongLinks, ParseError | HttpClientError.HttpClientError>;
+		) => Effect.Effect<SongLinks, HttpClientError.HttpClientError>;
 	}
 >() {}
 
@@ -57,7 +59,12 @@ export const SongLinkServiceLive = Layer.effect(
 					Effect.retry(retryTransient),
 				);
 
-				return yield* Schema.decodeUnknown(SongLinkResponse)(json);
+				return yield* Schema.decodeUnknown(SongLinkResponse)(json).pipe(
+					Effect.tapError((e) =>
+						Effect.logError("SongLink parse error", e.message),
+					),
+					Effect.catchTag("ParseError", () => Effect.succeed(emptySongLinks)),
+				);
 			}),
 		};
 	}),
